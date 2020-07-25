@@ -1,0 +1,26 @@
+<div style='text-indent: 36px; padding-left: -36px; font-size:14px;'>
+    <h3>
+        Latent Dirichlet Allocation
+    </h3>
+    <p>
+        To generate classifications of questions I start by looking at the answers to those questions. Latent Dirichlet
+        Allocation (LDA) is a topic modeling alogirhtm that is primarily a funciton of two core ideas:
+        <ul>
+            <li>All documents are a blend of various topics.</li>
+            <li>All topics are a blend of words.</li>
+        </ul>
+        "Each topic is... modeled as an infinite mixture over an underlying set of topic probabilities. In the context
+        of text modeling the topic probabilities provide an explicit represenation of a document", (Blei, Ng, and
+        Jordan). I'll be using this hierarchical bayesian approach to generate the classifications.
+    </p>
+    <p>
+        The equation to the right lays out, in sparse detail, the chief inferential task the LDA method aims to perform.
+        The posterior distribution can be approximated using a variety of clever techniques that rely on Laplace
+        approximation, variational approximation, and Markov chain Monte Carlo methods.
+    </p>
+    <p>
+        I used the <code>topicmodels</code> package in to perform LDA. The package provides an interface for R users to
+        the LDA that runs in C++ using Gibbs sampling. I've outline an example of the data prepartion below. Below the
+        data preparation step are the results from LDA trained on <em>looking</em> for 2, 3, and 4 topics.
+    </p>
+</div>

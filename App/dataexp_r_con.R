@@ -26,4 +26,22 @@ tit_txt <- answers_pre %>%
 dict <- data.frame(user = c("Total Inquiries or Replies",  "Mean Score", "Median Score",  "Max Score"),
                    bknd = c("Total_Ans", "Mean_Score", "Med_Score", "Max_Score"))
 
-
+# b4 <- answers_pre$Body_ans[1]
+# aft <- str_replace_all(b4, pattern = html_regex, ' ') %>%
+#   str_replace_all(pattern = sw_regex, ' ') %>%
+#   str_replace_all(pattern = sw_regex, ' ') %>%
+#   str_replace_all(pattern = sw_regex, ' ') %>%
+#   str_trim()
+# 
+# sw_regex <- paste0('[:space:]',paste0(actual_sw, collapse = '[:space:]|[:space:]'), '[:space:]', collapse = '') #%>% 
+#   # str_pad(width = str_length(.)+1, side = 'left') %>% str_pad(width = str_length(.)+1, side = 'right')
+# 
+# actual_sw
+# 
+# tibby <- tibble(questionId = answers_pre$ParentId[1],
+#        body = aft) %>%
+#   unnest_tokens(word, body) %>%
+#   count(word, questionId) %>%
+#   arrange(desc(n))
+# 
+# write_csv(tibby, path = paste0(getwd(), '/lda_tidy_ex.csv'))

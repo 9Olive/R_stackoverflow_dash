@@ -4,6 +4,8 @@ library(ggplot2)
 
 source(file = paste0('dataexp_r_con.R'))
 dataexp_pobs <- read_lines(file = paste0(getwd(), '/ts_obs.html')) %>% paste0(collapse = '')
+dataexp_lda_intro <- read_lines(file = paste0(getwd(), '/lda_intro.html')) %>% paste0(collapse = '')
+tidy_text_ex <- read_csv(file = 'lda_tidy_ex.csv')
 
 server <- function(input, output, session) {
 
@@ -51,6 +53,14 @@ server <- function(input, output, session) {
   output$plot_obs_id <- renderUI(
     HTML(dataexp_pobs)
   )
+
+# Latent Dirichlet Allocation ~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.~`.  
+
+  output$lda_intro_id <- renderUI(
+    HTML(dataexp_lda_intro)
+  )
   
+  output$tdy_text_id <- DT::renderDataTable(tidy_text_ex)
+    
 }
 
