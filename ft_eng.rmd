@@ -1,0 +1,184 @@
+---
+title: "Feature Engineering"
+author: "Joseph Oliveira"
+date: "7/23/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message = F}
+library(tidytext)
+library(tm)
+library(httr)
+library(rvest)
+library(tidyverse)
+library(e1071)
+```
+
+Goal:  
+  - Clean body using same method as from answers Latent Dirichlet Allocation prep
+  - Identify bigrams and trigrams
+  - Generate sparse matrix 
+    - n x m
+    - n = each document id
+    - m = all top packages and functions (present in text), and top bigrams and trigrams identified
+    - each cell represents the frequency of occurrance in the title and body (pooled)
+  - Run Naive Bayes, LDA, Logistic Regression (Using Date), Boosted Tree (using date), Random Forest (using date)
+
+```{r message = F}
+que_class <- read_csv('Prelim_Results/class_questions.csv')
+top_r_fns <- read_csv('https://raw.githubusercontent.com/v-kozhevnikov/GitHub_R_commands/master/data/top_2000_functions.csv')
+set.seed(49)
+```
+
+Combine and clean text data
+  
+Similar cleaning procedure as with the answers data set. 
+
+```{r}
+session <- html_session('https://www.w3schools.com/TAGs/')
+html_table <- html_table(session)
+
+html_tags <- tibble(tags = unlist(html_table))
+
+html_tags <- html_tags %>%
+  filter(str_detect(tags, pattern = '^<')) %>%
+  rename(open_tags = tags) %>%
+  mutate(close_tags = paste0(str_sub(open_tags, end = 1L), '/', str_sub(open_tags, start = 2L)))
+
+html_tag_vctr <- c(html_tags$open_tags, html_tags$close_tags, use.names = F)
+
+html_regex <- paste0('\\n|<img src=.+>|<a href=.+>|\\(|\\)|\\{|\\}|,|',
+                     paste0(html_tag_vctr, collapse = '|'), collapse = '')
+```
+
+Apply cleaning, then generate a bigram and trigram tables. Sampling from overall text data due to the size restrictions. 
+
+```{r}
+que_class_cln <- que_class %>%
+  mutate(textdata = paste0(Title, ' ', Body) %>%
+          str_replace_all(pattern = html_regex, ' ') %>%
+          str_trim(),
+         document = as.numeric(document))
+
+que_bigrams <- que_class_cln %>%
+  sample_frac(0.25, replace = F) %>%
+  select(document, textdata) %>%
+  unnest_tokens(term, textdata, token = 'ngrams', n = 2) %>%
+  mutate(term = str_trim(term)) %>% 
+  count(term) %>%
+  arrange(desc(n))
+
+que_trigrams <- que_class_cln %>%
+  sample_frac(0.26, replace = F) %>%
+  select(document, textdata) %>%
+  unnest_tokens(term, textdata, token = 'ngrams', n = 3) %>%
+  mutate(term = str_trim(term)) %>% 
+  count(term) %>%
+  arrange(desc(n))
+```
+
+Now to apply a stop word removal for the ngram datasets.
+
+```{r}
+que_bigrams <- que_bigrams %>%
+  filter(!str_detect(term, pattern = paste0(stopwords(), collapse = '|'))) %>%
+  filter(!str_detect(term, pattern = '[:digit:]')) %>%
+  filter(!str_detect(term, pattern = 'lt')) %>% 
+  filter(!str_detect(term, pattern = paste0(top_r_fns$content, collapse = '|'))) %>%
+  filter(str_length(term) > 5) %>%
+  mutate(n = n/sum(n))
+
+que_trigrams <- que_trigrams %>%
+  filter(!str_detect(term, pattern = paste0(stopwords(), collapse = '|'))) %>%
+  filter(!str_detect(term, pattern = '[:digit:]')) %>%
+  filter(!str_detect(term, pattern = 'lt')) %>%
+  filter(!str_detect(term, pattern = paste0(top_r_fns$content, collapse = '|'))) %>%
+  filter(str_length(term) > 8) %>%
+  mutate(n = n/sum(n))
+
+```
+
+Now I'll expand this procedure to bootstrap sampling.
+
+```{r eval = F}
+for (i in 1:3) {
+  
+  que_bigrams_bs <- que_class_cln %>%
+    sample_frac(0.25, replace = T) %>%
+    select(document, textdata) %>%
+    unnest_tokens(term, textdata, token = 'ngrams', n = 2) %>%
+    mutate(term = str_trim(term)) %>% 
+    count(term) %>%
+    arrange(desc(n)) %>%
+    filter(!str_detect(term, pattern = paste0(stopwords(), collapse = '|'))) %>%
+    filter(!str_detect(term, pattern = '[:digit:]')) %>%
+    filter(str_length(term) > 5) %>%
+    mutate(n = n/sum(n))
+  
+  que_bigrams <- que_bigrams %>%
+    inner_join(que_bigrams_bs, by = 'term', suffix = c('', '.bs')) %>%
+    mutate(n = n + n.bs) %>%
+    select(-n.bs) %>%
+    right_join(que_bigrams, by = 'term', suffix = c('', '.old')) %>%
+    mutate(n = ifelse(is.na(n), n.old, n)) %>%
+    select(-n.old)
+  
+  print(paste('Iteration step', i, 'completed.'))
+}
+
+```
+
+
+```{r}
+(que_bigrams <- que_bigrams %>%
+  separate(term, into = c('one', 'two'), sep = ' ', remove = F) %>%
+  filter(!(one == two)) %>%
+  select(-one, -two)) %>%
+  head(10)
+
+(que_trigrams <- que_trigrams %>%
+  separate(term, into = c('one', 'two', 'three'), sep = ' ', remove = F) %>%
+  filter(!(one == two) & !(one == three) & !(two == three)) %>%
+  select(-one, -two, -three)) %>% 
+  head(10)
+
+que_trigrams %>% head(10)
+```
+
+Recurring trigrams appear to be mostly nonsensical, while that is not the case for the bigrams. 
+So I'll just go with the top bigrams. 
+
+```{r}
+bigrams <- que_bigrams %>% 
+  head(1000) %>%
+  pull(term)
+```
+
+```{r}
+fns <- unique(top_r_fns$content)
+pdim <- pkgs <- unique(top_r_fns$library)[1:20]
+
+(p <-length(pkgs))
+```
+
+```{r}
+ndata <- matrix(data = logical(p * nrow(que_class)), ncol = p)
+colnames(ndata) <- pdim
+rownames(ndata) <- que_class_cln$document
+
+for (i in rownames(ndata)[1:100]) {
+  for (j in colnames(ndata)) {
+    if (str_detect(que_class_cln$textdata[which(que_class_cln$document == as.numeric(i))], 
+               pattern = paste0(j, top_r_fns$content[which(top_r_fns$library == j)], collapse = '|'))) {
+      ii <- which(rownames(ndata) == i)
+      jj <- which(colnames(ndata) == j)
+      ndata[ii, jj] <- TRUE
+               } 
+  }
+}
+```
+

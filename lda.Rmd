@@ -1,0 +1,342 @@
+---
+title: "Latent Dirchlet Allocation of Answers"
+output: html_notebook
+---
+
+```{r message = F}
+library(tidyverse)
+library(NLP)
+library(scales)
+library(tidytext)
+library(tm)
+library(httr)
+library(rvest)
+library(topicmodels)
+theme_set(theme_bw())
+```
+
+## Loading data
+
+```{r message = F, echo = F}
+answers <- read_csv('Raw_data/Answers.csv')
+que <- read_csv('Raw_data/Questions.csv')
+```
+
+## Exploration
+
+  - How many questions are solved?
+  
+If the `ParentId` is associated with a question that has an accepted answer then I will consider it a solved question.
+
+The distinct groupings of `ParentID` and `IsAcceptedAnswer` are:  
+  - ID + `TRUE`
+  - ID + `FALSE`
+
+Of course there will be questions with a set of answers where 1 or a few are accepted and the rest are not accepted. And there will be questions where there is no accepted answer. Therefore, the sum of the logical, `IsAcceptedAnswer`, will be 1 if there is at least 1 accepted answer and 0 if there is no accepted answer for a question. The `summarise` step leverages this condition to classify question IDs as `Solved` or `Unsolved`. The mean of the this classification is the percent of questions solved. 
+
+```{r}
+ans_solved <- answers %>%
+  distinct(ParentId, IsAcceptedAnswer) %>% 
+  group_by(ParentId) %>%
+  summarise(Solved = ifelse(sum(IsAcceptedAnswer) > 0, T, F)) %>%
+  ungroup()
+
+mean(ans_solved$Solved)
+```
+
+We see that the mean here is 69%. This translates to 69% of the question can be considred solved. 
+
+How many questions is that?
+
+```{r}
+mean(ans_solved$Solved) * n_distinct(ans_solved)
+answers %>%
+  filter(IsAcceptedAnswer == 'TRUE') %>%
+  nrow()
+```
+
+I have a minimum of 110,529 answers to perform Latent Dirichlet allocation, assuming that the questions are descriptive enough in their wording and are appropriate answers. There is also 1 unique accepted answer per question.
+
+Can there be more than one accepted answer for each question?  
+  - It's possible to have multiple solutions to a coding problem, so there could multiple accepted answers.
+  
+```{r}
+answers %>%
+  filter(IsAcceptedAnswer == 'TRUE') %>%
+  count(ParentId) %>%
+  arrange(desc(n)) %>%
+  head()
+```
+
+
+There is only 1 accepted answer per question.
+
+What is the score of the accepted answer and how does that compare the the score of high non-accepted answer?
+
+```{r}
+ans_top_brkdwn <- answers %>%
+  filter(ParentId %in% (ans_solved %>% filter(Solved == 'TRUE') %>% pull(ParentId))) %>%
+  group_by(ParentId, IsAcceptedAnswer) %>%
+  top_n(1, wt = Score) %>%
+  ungroup() 
+
+ans_top_brkdwn %>%
+  filter(Score <= quantile(Score, 0.99)) %>%
+  ggplot(aes(x = Score)) +
+  geom_histogram(aes(fill = IsAcceptedAnswer), color = 'black') +
+  facet_grid(IsAcceptedAnswer~., labeller = 
+               labeller(
+                 IsAcceptedAnswer = c('FALSE' = 'Not Accepted Answers', 'TRUE' = 'Accepted Answers')
+                 )
+             ) +
+  scale_x_continuous(breaks = pretty_breaks(20)) +
+  scale_y_continuous(breaks = pretty_breaks(7),
+                     label = number_format(big.mark = ',')) +
+  labs(title = "Histogram of Top Scores of Accepted and Non-Accepted Answers",
+       caption = "Only the top score pulled from each 'Solved' question's accepted and non-accepted answers.") +
+  theme(legend.position = 'None', text = element_text(size = 16))
+```
+
+Maybe the user wants to see them overlaid?
+
+```{r}
+ans_top_brkdwn %>%
+  filter(Score <= quantile(Score, 0.99)) %>%
+  mutate(IsAcceptedAnswer = ifelse(IsAcceptedAnswer == TRUE, 'Yes', 'No'),
+         IsAcceptedAnswer = factor(IsAcceptedAnswer, levels = c('Yes', 'No'))) %>%
+  ggplot(aes(x = Score)) +
+  geom_histogram(aes(fill = IsAcceptedAnswer), color = 'black',
+                 position = 'identity') +
+  scale_x_continuous(breaks = pretty_breaks(20)) +
+  scale_y_continuous(breaks = pretty_breaks(7),
+                     label = number_format(big.mark = ',')) +
+  labs(title = "Histogram of Top Scores of Accepted and Non-Accepted Answers",
+       caption = "Only the top score pulled from each 'Solved' question's accepted and non-accepted answers.",
+       fill = 'Is Answer Accepted') +
+  theme(text = element_text(size = 16)) +
+  scale_fill_manual(values = c('#00BFC4', '#F8766D'))
+```
+
+Preparing for Latent Dirichlet Allocation
+
+```{r}
+ans <- ( accepted <- answers %>% 
+           filter(IsAcceptedAnswer == 'TRUE')) %>%
+  pull(Body)
+
+length(ans)
+```
+
+This has to be cleaned up a bit.  
+  - Paragraph breaks are marked with `<p>`, `</p>`, and `\n`
+    - `<p>` seems to be a leading formatter
+    - Mid-body breaks: `<p>\n</p>`
+      - The number of line breaks, `\n` is arbitrary. 
+  - Need to clean up links as well. They are not going to be informative here unless I build a tool that goes to the link to pull what ever text is there. 
+    - Might try this with BeautifulSoup in python if I have some time.
+  - General HTML format modifiers will have to be dealt with.
+    - Might be helpful to store all types of HTML format modifiers to a vector for easy reference.
+  - In general, will need to identify line breaks: `\n`
+  - In code, the assignment operator is `&lt;-`, since &lt; is the `<` sign in HTML. 
+    - Can do a check to ensure that items between `<code> </code>`
+
+Pulling down a list of HTML tags
+
+```{r}
+session <- html_session('https://www.w3schools.com/TAGs/')
+html_table <- html_table(session)
+
+html_tags <- tibble(tags = unlist(html_table))
+
+html_tags <- html_tags %>%
+  filter(str_detect(tags, pattern = '^<')) %>%
+  rename(open_tags = tags) %>%
+  mutate(close_tags = paste0(str_sub(open_tags, end = 1L), '/', str_sub(open_tags, start = 2L)))
+
+html_tag_vctr <- c(html_tags$open_tags, html_tags$close_tags, use.names = F)
+```
+
+Cleaning up text data   
+
+```{r}
+html_regex <- paste0('\\n|<img src=.+>|<a href=.+>|\\(|\\)|\\{|\\}|,|',
+                     paste0(html_tag_vctr, collapse = '|'), collapse = '')
+
+ans_clean <- str_replace_all(ans, pattern = html_regex, ' ') %>% 
+  str_trim()
+head(ans_clean, 2)
+```
+
+Transforming into tidy text format
+
+```{r}
+ans_clean_tdy <- tibble(questionId = accepted$ParentId, 
+                        body = ans_clean) %>%
+  unnest_tokens(word, body)
+
+head(ans_clean_tdy, 10)
+```
+
+ Now the data is considered to be in a state referred to as *Tidy Text*. In this format, each word from each question is represented by a row. I have a total of `r number(nrow(ans_clean_tdy), big.mark = ',')` words from `r number(n_distinct(ans_clean_tdy$questionId), big.mark = ',')` questions. 
+ 
+ Average number of words per question:  
+```{r}
+nrow(ans_clean_tdy) / n_distinct(ans_clean_tdy$questionId)
+```
+ 
+This is pretty low for a Latent Dirichlet Allocation analysis. The resulting Document Term matrix will be pretty sparse, but I'll attempt the cluster algorithm anyways. There is one more step to get the *Tidy Text* in its tidiest form.
+
+```{r}
+ans_clean_tdy <- ans_clean_tdy %>%
+  count(word, questionId)
+```
+
+Time to pull stop words out, but I'll need to be careful about which stop words are filtered out since the context here is coding related. 
+
+This will be a manual process. I want to pick out words that related to conditional situations, i.e. `if` *condition* `then` *action*.
+
+```{r}
+ans_sw <- ans_clean_tdy %>%
+  filter(word %in% stopwords()) %>%
+  arrange(desc(n)) %>%
+  distinct(word) %>%
+  pull(word)
+
+ans_sw
+
+# Of the stopwords identified in the corpus, I'll be keeping the following:
+keep_sw <- c('from', 'if', 'all', 'by', 'i', 'in', 'and', 'not', 
+             'for', 'when', 'with', 'between', 'which', 'or', 
+             'any', 'where', 'while', 'then')
+
+actual_sw <- stopwords()[-which(stopwords() %in% keep_sw)]
+
+ans_clean_tdy %>%
+  filter(!word %in% actual_sw) %>%
+  arrange(desc(n)) %>%
+  distinct(word, .keep_all = T)
+```
+
+Those are just common stopword. I will need to add to that 'coding' stopwords. These are terms common accross any situation any coding situation and thus are discriminating. 
+
+```{r}
+actual_sw2 <- c(actual_sw, 
+               'x', # too common of a variable
+               'lt'# html code translated &lt; into '<', which is used as right assign. I do lose comparison ops.
+               )
+
+ans_clean_tdy <- ans_clean_tdy %>%
+  filter(!word %in% actual_sw2) %>%
+  filter(str_detect(word, pattern = '^[:digit:]+', negate = T)) %>%
+  filter(str_detect(word, pattern = '_+', negate = T))
+```
+
+Transforming tidy data into a document term matrix for LDA.
+
+```{r}
+(ans_dtm <- ans_clean_tdy %>%
+  cast_dtm(questionId, word, n))
+```
+
+Now the tidy data is in a sparse matrix form referred to as Document Term Matrix or DTM for short. Each `[i,j]` cell represents the number of occurances that the `ith` word has in the `jth` document (or questionId). Our DTM is fairly sparse, clockin' in at 100% sparsity.  
+
+```{r}
+ans_LDA2 <- LDA(ans_dtm, k = 2, control = list(seed = 49))
+```
+
+
+
+```{r}
+ans_LDA3 <- LDA(ans_dtm, k = 3, control = list(seed = 49))
+ans_LDA4 <- LDA(ans_dtm, k = 4, control = list(seed = 49))
+ans_LDA5 <- LDA(ans_dtm, k = 5, control = list(seed = 49))
+ans_LDA6 <- LDA(ans_dtm, k = 6, control = list(seed = 49))
+```
+
+```{r}
+lda_summary <- function(lda_res) {
+  tidy(lda_res, matrix = 'beta') %>%
+    group_by(topic) %>%
+    top_n(20, beta) %>%
+    ungroup() %>%
+    mutate(term = reorder_within(term, beta, topic)) %>%
+    ggplot(aes(term, beta, fill = factor(topic))) +
+    geom_col(show.legend = F) + 
+    facet_wrap(~ topic, scales = 'free') +
+    coord_flip() +
+    scale_x_reordered()
+}
+```
+
+The probability of a topic generating a term. 
+
+```{r}
+lda_summary(ans_LDA3)
+lda_summary(ans_LDA4)
+lda_summary(ans_LDA5)
+```
+
+The pobability a document is of a certain topic.
+
+```{r}
+que_classifier <- function(lda_res, n = 5) {
+  cluster <- tidy(lda_res, matrix = 'gamma') %>%
+    group_by(document) %>%
+    top_n(1, gamma) %>%
+    ungroup() %>%
+    right_join(mutate(que, Id = as.character(Id)), by = c('document' = 'Id')) %>%
+    arrange(desc(gamma), topic) 
+}
+```
+
+Let's examine how well defined each cluster is. `gamma` is the probability that a cluster pertains to the topic. So I will consider a density of gamma to view the distribution of probabilistic distinctions.
+
+```{r}
+ans_cluster %>%
+  mutate(topic = factor(topic)) %>%
+  ggplot() +
+  geom_density(aes(x = gamma, fill = topic)) +
+  facet_grid(topic ~ .)
+  
+```
+
+Next step, lets view to propose classifications in the context of the questions and see how well the classifier actually performed. 
+
+```{r}
+que_class3 <- que_classifier(ans_LDA3)
+  #group_by(topic) %>%
+  #top_n(5, gamma) %>%
+  #write_csv(path = paste0(getwd(), '/Prelim_Results/k2_questions.csv'))
+```
+
+```{r}
+solved_que_class <- inner_join(que_class2, que_class3, 
+           by = c("document", "OwnerUserId", "CreationDate", "Score", "Title", "Body"),
+           suffix = c('.k2', '')) %>%
+  inner_join(que_class4, 
+             by = c("document", "OwnerUserId", "CreationDate", "Score", "Title", "Body"),
+             suffix = c('.k3', '')) %>%
+  inner_join(que_class5, 
+             by = c("document", "OwnerUserId", "CreationDate", "Score", "Title", "Body"),
+             suffix = c('.k4', '')) %>% 
+  inner_join(que_class6, 
+             by = c("document", "OwnerUserId", "CreationDate", "Score", "Title", "Body"),
+             suffix = c('.k5', '.k6'))  
+nrow(solved_que_class) == nrow(que_class2)
+write_csv(solved_que_class, path = paste0(getwd(), '/Prelim_Results/class_questions.csv'))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
