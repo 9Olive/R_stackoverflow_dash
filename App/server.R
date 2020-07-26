@@ -61,6 +61,28 @@ server <- function(input, output, session) {
   )
   
   output$tdy_text_id <- DT::renderDataTable(tidy_text_ex)
+  
+  output$que_cls_dt_id <- DT::renderDataTable(DT::datatable(que_cls_dt, selection = 'single'), 
+                                          options = list(pageLength = 5),
+                                          initComplete = DT::JS('function(setting, json) { alert("done"); }'))
+  # output$ans_dt_id <- renderPlot(hist(rnorm(1000)))
+  output$ans_cls_txt_id <- renderUI({
+    z = input$que_cls_dt_id_rows_selected
+    if (length(z)) {
+      HTML(ans_cls_txt[z])
+    } else {
+      HTML("<p> Select row from Preview Table to view corresponding Q&A. </p>")
+    }
+  })
+  
+  output$que_cls_txt_id <- renderUI({
+    z = input$que_cls_dt_id_rows_selected
+    if (length(z)) {
+      HTML(que_cls_txt[z])
+    } else {
+      HTML("<p> Select row from Preview Table to view corresponding Q&A. </p>")
+    }
+  })
     
 }
 
