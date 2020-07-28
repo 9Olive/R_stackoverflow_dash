@@ -6,7 +6,7 @@ ans_ts <- read_csv('../Prelim_Results/Ans_Sum_TS.csv',
                    col_types = c('Diddi'))
 que_ts <- read_csv('../Prelim_Results/Que_Sum_TS.csv',
                    col_types = c('Diddi'))
-que_class_lda <- read_csv('../../Prelim_Results/lda_class_que.csv',
+que_class_lda <- read_csv('../Prelim_Results/lda_class_que.csv',
                           col_types = c('ncfffcc'))
 theme_set(theme_bw())
 
