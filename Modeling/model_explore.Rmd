@@ -1,0 +1,543 @@
+---
+title: "R Notebook"
+---
+
+```{r}
+library(tidyverse)
+library(class)
+library(tree)
+library(caret)
+library(leaps)
+library(gbm)
+set.seed(49)
+```
+
+## Load data
+
+```{r}
+questions_mod <- read_csv('../Prelim_Results/Questions_for_modeling.csv') %>%
+  mutate(topic.k2 = factor(topic.k2),
+         topic.k3 = factor(topic.k3),
+         topic.k4 = factor(topic.k4)) %>%
+  replace_na(list(n_tags = 0, n_tag_func = 0, n_tag_pkg = 0))
+```
+
+## Set up data
+
+### Training and testing split
+```{r}
+train <- sample(1:nrow(questions_mod), 0.7 * nrow(questions_mod)) 
+
+que_train <- questions_mod[train,]
+que_test  <- questions_mod[-train,]
+```
+
+### Secondary splits for LDA classifications
+
+#### k = 2  
+```{r}
+# Set up training data set for knn
+train_cls_k2 <- (que_train_k2 <- que_train %>%
+  select(CreationDate, k2_class_n_words, n_func, n_pkg, n_tags, n_tag_func, n_tag_pkg, topic.k2)) %>%
+  pull(topic.k2)
+que_train_k2_nr <- que_train_k2 %>% select(-topic.k2)
+que_train_k2_nr_std <- que_train_k2_nr %>% 
+  mutate(k2_class_n_words = (k2_class_n_words - mean(k2_class_n_words)) / sd(k2_class_n_words),
+         n_func           = (n_func - mean(n_func)) / sd(n_func),
+         n_pkg            = (n_pkg - mean(n_pkg)) / sd(n_pkg),
+         n_tags           = (n_tags - mean(n_tags)) / sd(n_tags),
+         n_tag_func       = (n_tag_func - mean(n_tag_func)) / sd(n_tag_func),
+         n_tag_pkg        = (n_tag_pkg - mean(n_tag_pkg)) / sd(n_tag_pkg))
+
+
+# Set up testing data
+test_cls_k2 <- (que_test_k2 <- que_test %>%
+  select(CreationDate, k2_class_n_words, n_func, n_pkg, n_tags, n_tag_func, n_tag_pkg, topic.k2)) %>%
+  pull(topic.k2)
+que_test_k2_nr <- que_test_k2 %>% select(-topic.k2)
+que_test_k2_nr_std <- que_test_k2_nr %>% 
+  mutate(k2_class_n_words = (k2_class_n_words - mean(k2_class_n_words)) / sd(k2_class_n_words),
+         n_func           = (n_func - mean(n_func)) / sd(n_func),
+         n_pkg            = (n_pkg - mean(n_pkg)) / sd(n_pkg),
+         n_tags           = (n_tags - mean(n_tags)) / sd(n_tags),
+         n_tag_func       = (n_tag_func - mean(n_tag_func)) / sd(n_tag_func),
+         n_tag_pkg        = (n_tag_pkg - mean(n_tag_pkg)) / sd(n_tag_pkg))
+```
+
+#### k = 3  
+```{r}
+# Set up training data set for knn
+train_cls_k3 <- (que_train_k3 <- que_train %>%
+  select(CreationDate, k3_class_n_words, n_func, n_pkg, n_tags, n_tag_func, n_tag_pkg, topic.k3)) %>%
+  pull(topic.k3)
+que_train_k3_nr <- que_train_k3 %>% select(-topic.k3)
+que_train_k3_nr_std <- que_train_k3_nr %>% 
+  mutate(k3_class_n_words = (k3_class_n_words - mean(k3_class_n_words)) / sd(k3_class_n_words),
+         n_func           = (n_func - mean(n_func)) / sd(n_func),
+         n_pkg            = (n_pkg - mean(n_pkg)) / sd(n_pkg),
+         n_tags           = (n_tags - mean(n_tags)) / sd(n_tags),
+         n_tag_func       = (n_tag_func - mean(n_tag_func)) / sd(n_tag_func),
+         n_tag_pkg        = (n_tag_pkg - mean(n_tag_pkg)) / sd(n_tag_pkg))
+
+# Set up testing data
+test_cls_k3 <- (que_test_k3 <- que_test %>%
+  select(CreationDate, k3_class_n_words, n_func, n_pkg, n_tags, n_tag_func, n_tag_pkg, topic.k3)) %>%
+  pull(topic.k3)
+que_test_k3_nr <- que_test_k3 %>% select(-topic.k3)
+que_test_k3_nr_std <- que_test_k3_nr %>% 
+  mutate(k3_class_n_words = (k3_class_n_words - mean(k3_class_n_words)) / sd(k3_class_n_words),
+         n_func           = (n_func - mean(n_func)) / sd(n_func),
+         n_pkg            = (n_pkg - mean(n_pkg)) / sd(n_pkg),
+         n_tags           = (n_tags - mean(n_tags)) / sd(n_tags),
+         n_tag_func       = (n_tag_func - mean(n_tag_func)) / sd(n_tag_func),
+         n_tag_pkg        = (n_tag_pkg - mean(n_tag_pkg)) / sd(n_tag_pkg))
+```
+
+#### k = 4  
+```{r}
+# Set up training data set for knn
+train_cls_k4 <- (que_train_k4 <- que_train %>%
+  select(CreationDate, k4_class_n_words, n_func, n_pkg, n_tags, n_tag_func, n_tag_pkg, topic.k4)) %>%
+  pull(topic.k4)
+que_train_k4_nr <- que_train_k4 %>% select(-topic.k4)
+que_train_k4_nr_std <- que_train_k4_nr %>% 
+  mutate(k4_class_n_words = (k4_class_n_words - mean(k4_class_n_words)) / sd(k4_class_n_words),
+         n_func           = (n_func - mean(n_func)) / sd(n_func),
+         n_pkg            = (n_pkg - mean(n_pkg)) / sd(n_pkg),
+         n_tags           = (n_tags - mean(n_tags)) / sd(n_tags),
+         n_tag_func       = (n_tag_func - mean(n_tag_func)) / sd(n_tag_func),
+         n_tag_pkg        = (n_tag_pkg - mean(n_tag_pkg)) / sd(n_tag_pkg))
+
+# Set up testing data
+test_cls_k4 <- (que_test_k4 <- que_test %>%
+  select(CreationDate, k4_class_n_words, n_func, n_pkg, n_tags, n_tag_func, n_tag_pkg, topic.k4)) %>%
+  pull(topic.k4)
+que_test_k4_nr <- que_test_k4 %>% select(-topic.k4)
+que_test_k4_nr_std <- que_test_k4_nr %>% 
+  mutate(k4_class_n_words = (k4_class_n_words - mean(k4_class_n_words)) / sd(k4_class_n_words),
+         n_func           = (n_func - mean(n_func)) / sd(n_func),
+         n_pkg            = (n_pkg - mean(n_pkg)) / sd(n_pkg),
+         n_tags           = (n_tags - mean(n_tags)) / sd(n_tags),
+         n_tag_func       = (n_tag_func - mean(n_tag_func)) / sd(n_tag_func),
+         n_tag_pkg        = (n_tag_pkg - mean(n_tag_pkg)) / sd(n_tag_pkg))
+```
+
+
+
+## Modeling
+
+### kNN
+
+#### k = 2, kNN
+
+```{r}
+kNNfit_k2 <- knn(train = select(que_train_k2_nr_std, -CreationDate),
+                 test = select(que_test_k2_nr_std, -CreationDate),
+                 cl = train_cls_k2,
+                 k = 1)
+kNN_1 <- table(kNNfit_k2, test_cls_k2)
+1 - sum(diag(kNN_1)) / sum(kNN_1)
+
+folds <- createFolds(train_cls_k2,
+                     k = 10)
+k_Neighs <- 1:10
+knnfit_k2 <- data.frame(k = rep(1:10, each = 10), MisClass = numeric(100L), Fold = rep(1:10, 10))
+
+for (i in k_Neighs) {
+  for (j in 1:length(folds)) {
+    set <- folds[[j]]
+    kNNfit <- knn(train = select(que_train_k2_nr_std, -CreationDate) %>% slice(set),
+                  test = select(que_test_k2_nr_std, -CreationDate),
+                  cl = train_cls_k2[set],
+                  k = i)
+    tabl <- table(kNNfit, test_cls_k2)
+    knnfit_k2$MisClass[((i-1) * 10) + j] <- 1 - (sum(diag(tabl)) / sum(tabl))
+  }
+}
+
+knnfit_k2 %>%
+  rename(Neighbors = k, 
+         `Misclassification Rate` = MSE,
+         `CV Fold` = Fold) %>%
+  write_csv(path = 'knnfit_k2.csv')
+```
+
+#### k = 3, kNN
+
+```{r}
+k_Neighs <- 1:10
+knnfit_k3 <- data.frame(k = rep(1:10, each = 10), MisClass = numeric(100L), Fold = rep(1:10, 10))
+
+for (i in k_Neighs) {
+  for (j in 1:length(folds)) {
+    set <- folds[[j]]
+    kNNfit <- knn(train = select(que_train_k3_nr_std, -CreationDate) %>% slice(set),
+                  test = select(que_test_k3_nr_std, -CreationDate),
+                  cl = train_cls_k3[set],
+                  k = i)
+    tabl <- table(kNNfit, test_cls_k3)
+    knnfit_k3$MisClass[((i-1) * 10) + j] <- 1 - (sum(diag(tabl)) / sum(tabl))
+  }
+}
+
+knnfit_k3 %>%
+  rename(Neighbors = k, 
+         `Misclassification Rate` = MSE,
+         `CV Fold` = Fold) %>%
+  write_csv(path = 'knnfit_k3.csv')
+```
+
+#### k = 4, kNN
+
+```{r}
+k_Neighs <- 1:10
+knnfit_k4 <- data.frame(k = rep(1:10, each = 10), MisClass = numeric(100L), Fold = rep(1:10, 10))
+
+for (i in k_Neighs) {
+  for (j in 1:length(folds)) {
+    set <- folds[[j]]
+    kNNfit <- knn(train = select(que_train_k4_nr_std, -CreationDate) %>% slice(set),
+                  test = select(que_test_k4_nr_std, -CreationDate),
+                  cl = train_cls_k4[set],
+                  k = i)
+    tabl <- table(kNNfit, test_cls_k4)
+    knnfit_k4$MisClass[((i-1) * 10) + j] <- 1 - (sum(diag(tabl)) / sum(tabl))
+  }
+}
+knnfit_k4 %>%
+  rename(Neighbors = k, 
+         `Misclassification Rate` = MSE,
+         `CV Fold` = Fold) %>%
+  write_csv(path = 'knnfit_k4.csv')
+```
+
+
+### tree
+
+#### k = 2, boosted tree
+
+```{r}
+tree_k2 <- tree(topic.k2 ~ ., que_train_k2)
+tree_k2_cv <- cv.tree(tree_k2, FUN = prune.tree)
+plot(tree_k2_cv$size, tree_k2_cv$dev, type = 'b')
+
+boostFit_k2 <- gbm(topic.k2 ~ ., 
+                data = select(que_train_k2, -CreationDate), 
+                n.trees = 500, 
+                distribution = 'multinomial', 
+                shrinkage = 0.1, 
+                interaction.depth = 4)
+
+best_iter_k2 <- gbm.perf(boostFit_k2, method = 'OOB')
+bsk2 <- summary(boostFit_k2, n.trees = best_iter_k2) 
+tbl_df(bsk2) %>%
+  rename('Variable' = var,
+         'Relative Influence' = rel.inf) %>%
+  write_csv(path = 'boost_k2.csv')
+
+preds <- predict(boostFit_k2, 
+                 que_test_k2_nr,
+                 n.trees = best_iter_k2, 
+                 type = 'response')
+
+pred_result <- tbl_df(preds[,,1]) %>%
+  mutate(result = ifelse(`1` > `2`, 1, 2)) %>%
+  pull(result)
+
+tbl <- table(pred_result, test_cls_k2)
+
+real_boosted_k2_MSE <- 1 - sum(diag(tbl)) / sum(tbl)
+```
+
+#### k = 3, boosted tree
+
+```{r}
+tree_k3 <- tree(topic.k3 ~ ., que_train_k3)
+tree_k3_cv <- cv.tree(tree_k3, FUN = prune.tree)
+plot(tree_k3_cv$size, tree_k3_cv$dev, type = 'b')
+
+boostFit_k3 <- gbm(topic.k3 ~ ., 
+                data = select(que_train_k3, -CreationDate), 
+                n.trees = 500, 
+                distribution = 'multinomial', 
+                shrinkage = 0.1, 
+                interaction.depth = 4)
+
+best_iter_k3 <- gbm.perf(boostFit_k3, method = 'OOB')
+bsk3 <- summary(boostFit_k3, n.trees = best_iter_k3) 
+# tbl_df(bsk3) %>%
+#   rename('Variable' = var,
+#          'Relative Influence' = rel.inf) %>%
+#   write_csv(path = 'boost_k3.csv')
+
+preds <- predict(boostFit_k3, 
+                 que_test_k3_nr,
+                 n.trees = best_iter_k3, 
+                 type = 'response')
+
+pred_result <- tbl_df(preds[,,1]) %>%
+  mutate(result = ifelse(`1` > `2` & `1` > `3`, 1,
+                         ifelse(`2` > `3` & `2` > `1`, 2, 3))) %>%
+  pull(result)
+
+tbl <- table(pred_result, test_cls_k3)
+
+real_boosted_k3_MSE <- 1 - sum(diag(tbl)) / sum(tbl)
+```
+
+
+#### k = 4, boosted tree
+
+```{r}
+tree_k4 <- tree(topic.k4 ~ ., que_train_k4)
+tree_k4_cv <- cv.tree(tree_k4, FUN = prune.tree)
+plot(tree_k4_cv$size, tree_k4_cv$dev, type = 'b')
+
+boostFit_k4 <- gbm(topic.k4 ~ ., 
+                data = select(que_train_k4, -CreationDate), 
+                n.trees = 500, 
+                distribution = 'multinomial', 
+                shrinkage = 0.1, 
+                interaction.depth = 3)
+
+best_iter_k4 <- gbm.perf(boostFit_k4, method = 'OOB')
+bsk4 <- summary(boostFit_k4, n.trees = best_iter_k4) 
+# tbl_df(bsk4) %>%
+#   rename('Variable' = var,
+#          'Relative Influence' = rel.inf) %>%
+#   write_csv(path = 'boost_k4.csv')
+
+preds <- predict(boostFit_k4, 
+                 que_test_k4_nr,
+                 n.trees = best_iter_k4, 
+                 type = 'response')
+
+pred_result <- tbl_df(preds[,,1]) %>%
+  mutate(result = ifelse(`1` > `2` & `1` > `3` & `1` > `4`, 1,
+                         ifelse(`2` > `3` & `2` > `1` & `2` > `4`, 2, 
+                                ifelse(`3` > `1` & `3` > `2` & `3` > `4`, 3, 4)))) %>%
+  pull(result)
+
+tbl <- table(pred_result, test_cls_k4)
+
+(real_boosted_k4_MSE <- 1 - sum(diag(tbl)) / sum(tbl))
+```
+
+aggregating results
+
+```{r}
+boosted_misclass <- tibble(`LDA k` = 2:4,
+       `Misclassification Rate` = c(real_boosted_k2_MSE, real_boosted_k3_MSE, real_boosted_k4_MSE))
+
+write_csv(boosted_misclass, path = 'bst_miscls.csv')
+
+
+```
+
+
+### Logistic and Multilogistic Regression
+
+#### k = 2
+
+```{r}
+logit_k2 <- glm(topic.k2 ~ ., data = que_train_k2, family = 'binomial')
+summary(logit_k2)
+preds_k2 <- predict(logit_k2, que_test_k2_nr, type = 'response') 
+levels(que_train_k2$topic.k2) # Prediction is probability that the class = 1
+tbl_k2 <- table(ifelse(round(preds_k2) == 1, 1, 2), test_cls_k2)
+logit_k2_MSE <- 1 - sum(diag(tbl_k2)) / sum(tbl_k2)
+```
+
+```{r}
+logit_k2_alpha <- glm(topic.k2 ~ . -k2_class_n_words, data = que_train_k2, family = 'binomial')
+summary(logit_k2_alpha) # Marginally lower AIC
+#plot(logit_k2_alpha)
+preds_k2_alpha <- predict(logit_k2_alpha, que_test_k2_nr, type = 'response') 
+tbl_k2_alpha <- table(ifelse(round(preds_k2_alpha) == 1, 1, 2), test_cls_k2)
+(logit_k2_alpha_MSE <- 1 - sum(diag(tbl_k2_alpha)) / sum(tbl_k2_alpha))
+```
+
+
+```{r}
+
+logit_k2_beta <- glm(topic.k2 ~ I(n_func**0.5) + n_pkg + n_tags + n_tag_func + n_tag_pkg - k2_class_n_words, data = que_train_k2, family = 'binomial')
+summary(logit_k2_beta) # higher AIC than vanilla and alpha
+
+preds_k2_beta <- predict(logit_k2_beta, que_test_k2_nr, type = 'response') 
+tbl_k2_beta <- table(ifelse(round(preds_k2_beta) == 1, 1, 2), test_cls_k2)
+(logit_k2_beta_MSE <- 1 - sum(diag(tbl_k2_beta)) / sum(tbl_k2_beta))
+
+```
+
+
+```{r}
+logit_k2_gamma <- glm(topic.k2 ~ . + I(n_func**0.5) - k2_class_n_words, data = que_train_k2, family = 'binomial')
+summary(logit_k2_gamma) 
+# plot(logit_k2_gamma)
+
+preds_k2_gamma <- predict(logit_k2_gamma, que_test_k2_nr, type = 'response') 
+tbl_k2_gamma <- table(ifelse(round(preds_k2_gamma) == 1, 1, 2), test_cls_k2)
+(logit_k2_gamma_MSE <- 1 - sum(diag(tbl_k2_gamma)) / sum(tbl_k2_gamma))
+
+que_train_k2_nr_std
+```
+
+### PCA
+
+```{r}
+PCA <- function(data, ...) {
+  data <- data %>%
+    select(-CreationDate) 
+
+  prcomp(data, ...)
+}
+
+PCA_to_tbl <- function(pca_data, method = c('rotation', 'sdev')) {
+  
+  # 
+  if (method == 'rotation') {
+    pca_data <- pca_data[[method]]
+    pca_rows <- rownames(pca_data)
+    tbl_df(pca_data) %>%
+      mutate(predictors = factor(pca_rows)) %>%
+      select(predictors, everything())
+    
+  } else if (method == 'sdev') {
+    
+    pca_data <- pca_data[[method]]
+    tibble(PC = seq_along(pca_data),
+           Std_Dev = pca_data,
+           Var = Std_Dev^2)
+  } else {
+    stop(print('method = rotation or sdev'))
+  }
+}
+```
+
+
+#### k = 2
+
+```{r}
+pca_k2 <- PCA(que_train_k2_nr_std)
+PCA_to_tbl(pca_k2, 'rotation')
+pca_tbl_k2 <- tbl_df(cbind(train_cls_k2, pca_k2$x[,1:4]))
+
+
+tree_k2_pca <- tree(train_cls_k2 ~ ., pca_tbl_k2)
+tree_k2_pca_cv <- cv.tree(tree_k2_pca, FUN = prune.tree)
+plot(tree_k2_pca_cv$size, tree_k2_pca_cv$dev, type = 'b')
+
+boostFit_k2_pca <- gbm(train_cls_k2 ~ .,
+                       data = pca_tbl_k2,
+                       n.trees = 500,
+                       distribution = 'multinomial',
+                       shrinkage = 0.1,
+                       interaction.depth = 4)
+
+best_iter_k2_pca <- gbm.perf(boostFit_k2_pca, method = 'OOB')
+summary(boostFit_k2_pca, n.trees = best_iter_k2_pca)
+
+pca_k2_test <- PCA(que_test_k2_nr_std)
+pca_tbl_test_k2 <- tbl_df(pca_k2_test$x[,1:4])
+
+preds_pca_k2 <- predict(boostFit_k2_pca, 
+                 pca_tbl_test_k2,
+                 n.trees = best_iter_k2_pca, 
+                 type = 'response')
+
+pred_result <- tbl_df(preds_pca_k2[,,1]) %>%
+  mutate(result = ifelse(`1` > `2`, 1, 2)) %>%
+  pull(result)
+
+tbl <- table(pred_result, test_cls_k2)
+
+boosted_k2_MSE <- 1 - sum(diag(tbl)) / sum(tbl)
+```
+
+
+Misclassification rate is just as good as guessing for k = 2
+
+#### k = 3
+
+```{r}
+pca_k3 <- PCA(que_train_k3_nr_std)
+PCA_to_tbl(pca_k3, 'rotation')
+pca_tbl_k3 <- tbl_df(cbind(train_cls_k3, pca_k3$x[,1:4]))
+
+
+tree_k3_pca <- tree(train_cls_k3 ~ ., pca_tbl_k3)
+tree_k3_pca_cv <- cv.tree(tree_k3_pca, FUN = prune.tree)
+plot(tree_k3_pca_cv$size, tree_k3_pca_cv$dev, type = 'b')
+
+boostFit_k3_pca <- gbm(train_cls_k3 ~ .,
+                       data = pca_tbl_k3,
+                       n.trees = 500,
+                       distribution = 'multinomial',
+                       shrinkage = 0.1,
+                       interaction.depth = 4)
+
+best_iter_k3_pca <- gbm.perf(boostFit_k3_pca, method = 'OOB')
+summary(boostFit_k3_pca, n.trees = best_iter_k3_pca)
+
+pca_k3_test <- PCA(que_test_k3_nr_std)
+pca_tbl_test_k3 <- tbl_df(pca_k3_test$x[,1:4])
+
+preds_pca_k3 <- predict(boostFit_k3_pca, 
+                 pca_tbl_test_k3,
+                 n.trees = best_iter_k3_pca, 
+                 type = 'response')
+
+pred_result <- tbl_df(preds_pca_k3[,,1]) %>%
+  mutate(result = ifelse(`1` > `2` & `1` > `3`, 1,
+                         ifelse(`2` > `3` & `2` > `1`, 2, 3)))  %>%
+  pull(result)
+
+tbl <- table(pred_result, test_cls_k3)
+
+boosted_k3_MSE <- 1 - sum(diag(tbl)) / sum(tbl)
+```
+
+Misclassification rate is just as good as guessing
+
+#### k = 4
+
+```{r}
+pca_k4 <- PCA(que_train_k4_nr_std)
+PCA_to_tbl(pca_k4, 'rotation')
+pca_tbl_k4 <- tbl_df(cbind(train_cls_k4, pca_k4$x[,1:4]))
+
+
+tree_k4_pca <- tree(train_cls_k4 ~ ., pca_tbl_k4)
+tree_k4_pca_cv <- cv.tree(tree_k4_pca, FUN = prune.tree)
+plot(tree_k4_pca_cv$size, tree_k4_pca_cv$dev, type = 'b')
+
+boostFit_k4_pca <- gbm(train_cls_k4 ~ .,
+                       data = pca_tbl_k4,
+                       n.trees = 500,
+                       distribution = 'multinomial',
+                       shrinkage = 0.1,
+                       interaction.depth = 4)
+
+best_iter_k4_pca <- gbm.perf(boostFit_k4_pca, method = 'OOB')
+summary(boostFit_k4_pca, n.trees = best_iter_k4_pca)
+
+pca_k4_test <- PCA(que_test_k4_nr_std)
+pca_tbl_test_k4 <- tbl_df(pca_k4_test$x[,1:4])
+
+preds_pca_k4 <- predict(boostFit_k4_pca, 
+                 pca_tbl_test_k4,
+                 n.trees = best_iter_k4_pca, 
+                 type = 'response')
+
+pred_result <- tbl_df(preds_pca_k4[,,1]) %>%
+  mutate(result = ifelse(`1` > `2` & `1` > `3` & `1` > `4`, 1,
+                         ifelse(`2` > `3` & `2` > `1` & `2` > `4`, 2, 
+                                ifelse(`3` > `1` & `3` > `2` & `3` > `4`, 3, 4)))) %>%
+  pull(result)
+
+tbl <- table(pred_result, test_cls_k4)
+
+boosted_k4_MSE <- 1 - sum(diag(tbl)) / sum(tbl)
+```
+
+Just as good as guessing, again. PCA is not helpful here. 
