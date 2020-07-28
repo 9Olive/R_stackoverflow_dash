@@ -1,0 +1,89 @@
+---
+title: "Exploratory Data Analysis"
+output: html_document
+---
+
+```{r message = F, echo = F}
+library(tidyverse)
+library(NLP)
+library(scales)
+library(tidytext)
+library(tm)
+library(httr)
+library(rvest)
+library(topicmodels)
+theme_set(theme_bw())
+```
+
+## About this data set:  
+  
+  The task of figuring out *how* to ask the right question can be made a bit easier with the help of this app, at least for beginner R users. My goal is to create a model that predicts the topic a question is referring to. There is an issue though, the data set I have does not contain **any** topic categorization.   
+
+```{r message = F, echo = F}
+answers <- read_csv('Raw_data/Answers.csv')
+que <- read_csv('Raw_data/Questions.csv')
+```
+
+## Exploration  
+
+  - How many questions are solved?  
+  
+If the `ParentId` is associated with a question that has an accepted answer then I will consider it a solved question.  
+
+The distinct groupings of `ParentID` and `IsAcceptedAnswer` are:   
+  - ID + `TRUE`  
+  - ID + `FALSE`  
+
+Of course there will be questions with a set of answers where 1 or a few are accepted and the rest are not accepted. And there will be questions where there is no accepted answer. Therefore, the sum of the logical, `IsAcceptedAnswer`, will be 1 if there is at least 1 accepted answer and 0 if there is no accepted answer for a question. The `summarise` step leverages this condition to classify question IDs as `Solved` or `Unsolved`. The mean of the this classification is the percent of questions solved.   
+
+```{r}
+ans_solved <- answers %>%  
+  distinct(ParentId, IsAcceptedAnswer) %>%   
+  group_by(ParentId) %>%  
+  summarise(Solved = ifelse(sum(IsAcceptedAnswer) > 0, T, F)) %>%  
+  ungroup()  
+
+mean(ans_solved$Solved)  
+```
+
+We see that the mean here is 69%. This translates to 69% of the question can be considred solved. 
+
+How many answers is that?
+
+```{r}
+mean(ans_solved$Solved) * n_distinct(ans_solved)
+answers %>%
+  filter(IsAcceptedAnswer == 'TRUE') %>%
+  nrow()
+```
+
+I have a minimum of 110,529 answers to perform Latent Dirichlet allocation, assuming that the answers are descriptive enough in their wording and are appropriate answers.
+
+Can there be more than one accepted answer for each question?  
+  - It's possible to have multiple solutions to a coding problem, so there could multiple accepted answers.
+  
+```{r}
+answers %>%
+  filter(IsAcceptedAnswer == 'TRUE') %>%
+  count(ParentId) %>%
+  arrange(desc(n)) %>%
+  head() %>%
+  DT::datatable()
+```
+
+There is only 1 accepted answer per question.
+
+What is the score of the accepted answer and how does that compare the the score of high non-accepted answer? Can I learn anything from the other answers?
+
+To visualize the score I filter down the data set to QuestionIDs that have an accepted answer. I then pull out the accepted answer and the top scoring non-accepted answer. 
+
+```{r eval = F}
+ans_top_brkdwn <- answers %>%
+  filter(ParentId %in% (ans_solved %>% filter(Solved == 'TRUE') %>% pull(ParentId))) %>%
+  group_by(ParentId, IsAcceptedAnswer) %>%
+  top_n(1, wt = Score) %>%
+  ungroup() 
+
+write_csv(ans_top_brkdwn, path = paste0(getwd(), '/Prelim_Results/ggAns.csv'))
+```
+

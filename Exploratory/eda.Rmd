@@ -1,0 +1,84 @@
+---
+title: "Exploratory Data Analysis"
+author: "Joseph Oliveira"
+date: "7/20/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message = F}
+library(tidyverse)
+library(stringr)
+library(stopwords)
+library(NLP)
+```
+
+## Loading Data
+
+```{r message = F}
+que <- read_csv('Raw_data/Questions.csv')
+```
+
+Questions data set
+
+```{r}
+head(que)
+```
+
+Sorting by `score`
+
+```{r}
+que %>%
+  arrange(desc(Score)) %>%
+  select(CreationDate, Title, Score) %>%
+  head(500) %>% 
+  DT::datatable()
+```
+
+  - Most of the top questions are from 2009 - 2011. 
+
+What are the frequency of topics?
+
+```{r}
+que_titles <- que %>% pull(Title)
+```
+
+Now I want each word to be in a vector. Will have to take care of special characters.
+
+```{r}
+que_titles_mat <- str_split(que_titles, pattern = ' ', simplify = T)
+dim(que_titles_mat)
+
+# Removes white spaces
+que_titles_bow <- as.vector(que_titles_mat)
+
+bag_of_words <- tibble(words = que_titles_bow) %>%
+  mutate(words = tolower(words)) %>%
+  arrange(words) %>%
+  filter(words != '')
+
+
+word_freq <- bag_of_words %>%
+  mutate(words = str_extract_all(words, pattern = "[:alpha:]"),
+         words = paste0(unlist(words), collapse = ''),
+         words = tolower(words)) %>%
+  count(words) %>%
+  arrange(desc(n)) %>%
+  slice(-1) %>%
+  #filter(!words %in% stopwords('en')) #instead of filtering them out, I'll label them
+  mutate(isStopword = ifelse(words %in% stopwords('en'), T, F))
+```
+
+Count words via parallel computing:
+
+```{r}
+tbl_size <- nrow(bag_of_words) / (detectCores() - 1)
+```
+
+
+Can maybe turn this into a word cloud? Can be one tab.
+
+  - With an option to remove stopwords

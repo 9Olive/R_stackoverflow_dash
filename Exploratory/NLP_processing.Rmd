@@ -1,0 +1,331 @@
+---
+title: "LDA Summarization"
+author: "Joseph Oliveira"
+date: "7/25/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidytext)
+library(httr)
+library(rvest)
+```
+
+
+```{r message = F}
+que_class <- read_csv("~/Projects/Career/Masters in Statistics/ST558/Prelim_Results/class_questions.csv")
+que_class %>% head()
+```
+
+Generate metrics that can be used to create predictions:  
+  - Presence of code: 0, 1
+  - Number of observed function mentions
+  - Number of observed package mentions
+  - Number of observed stopwords
+  - tf-idf 
+  
+tf-idf
+
+```{r}
+session <- html_session('https://www.w3schools.com/TAGs/')
+html_table <- html_table(session)
+html_tags <- tibble(tags = unlist(html_table))
+html_tags <- html_tags %>%
+  filter(str_detect(tags, pattern = '^<')) %>%
+  rename(open_tags = tags) %>%
+  mutate(close_tags = paste0(str_sub(open_tags, end = 1L), '/', str_sub(open_tags, start = 2L)))
+
+html_tag_vctr <- c(html_tags$open_tags, html_tags$close_tags, use.names = F)
+
+# Define Regular Expression
+html_regex <- paste0('\\n|<img src=.+>|<a href=.+>|\\(|\\)|\\{|\\}|,|',
+                     paste0(html_tag_vctr, collapse = '|'), collapse = '')
+```
+
+  
+```{r}
+que_class <- que_class %>% 
+  filter(!is.na(topic.k2)) %>%
+  mutate(textdata = paste0(Title, ' ', Body) %>%
+          str_replace_all(pattern = html_regex, ' ') %>%
+           str_replace_all(pattern = '[:digit:]+', ' ') %>%
+           str_replace_all(pattern = '_+', ' ') %>%
+          str_trim(),
+         document = as.numeric(document))
+
+# que_class %>% 
+#   select(-Title, -Body) %>%
+#   write_csv(path = "~/Projects/Career/Masters in Statistics/ST558/Prelim_Results/Question_Class_Text_Clean.csv")
+
+doc_words <- tibble(topic = que_class$topic.k2,
+       body = que_class$textdata) %>%
+  unnest_tokens(word, body) %>%
+  count(topic, word, sort = T)
+
+tot_words <- doc_words %>%
+  group_by(topic) %>%
+  summarise(total = sum(n))
+
+# doc_words <- left_join(doc_words, tot_words) 
+
+(doc_words <- left_join(doc_words, tot_words) %>%
+  mutate(rank = row_number(), 
+         `term frequency` = n/total) %>%
+  arrange(`term frequency`))
+
+doc_words
+```
+
+
+```{r}
+doc_words %>%
+  mutate(topic = factor(topic)) %>%
+  ggplot(aes(rank, `term frequency`, color = topic)) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = F) +
+  scale_x_log10() +
+  scale_y_log10()
+
+rank_subset <- doc_words %>%
+  filter(between(rank, quantile(rank, 0.2), quantile(rank, 0.8)))
+
+lm(log10(`term frequency`) ~ log10(rank), data = rank_subset)
+```
+
+```{r}
+doc_words %>%
+  mutate(topic = factor(topic)) %>%
+  ggplot(aes(rank, `term frequency`, color = topic)) +
+  geom_abline(intercept = 0.9843, slope = -1.4895, color = 'gray50', linetype = 2) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = F) +
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+Using bind_tf_indf
+
+```{r}
+doc_words_idf <- doc_words %>%
+  select(-rank, -`term frequency`) %>%
+  bind_tf_idf(word, topic, n)
+
+doc_words_idf
+```
+
+```{r}
+doc_words_idf %>%
+  select(-total) %>%
+  arrange(desc(tf_idf)) %>%
+  group_by(topic) %>%
+  top_n(100)
+
+doc_words_idf <- doc_words_idf %>%
+  arrange(-n) %>%
+  mutate(topic = factor(topic),
+         rank = row_number()) 
+
+lm.plot <- lm(log10(`tf`) ~ log10(rank), data = doc_words_idf %>% filter(between(rank, quantile(rank, 0.2), quantile(rank, 0.8))))
+
+doc_words_idf %>%
+  ggplot(aes(rank, `tf`, color = topic)) +
+  geom_abline(intercept = coef(lm.plot)[1], slope = coef(lm.plot)[2], color = 'gray50', linetype = 2) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = F) +
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+Generalizing process:
+
+```{r}
+que_clean <- read_csv("../Prelim_Results/Question_Class_Text_Clean.csv")
+
+que_clean %>% pull(ends_with('2')) %>% head()
+
+gen_tf_idf <- function(data = que_clean, k = 2) {
+  
+  if (k == 2) {
+    
+    k <- 'topic.k2'
+    
+  } else if (k == 3) {
+    
+    k <- 'topic.k3'
+    
+  } else {
+    
+    k <- 'topic.k4'
+    
+  }
+  
+  tibble(topic = data[[k]],
+         body = data$textdata) %>%
+    unnest_tokens(word, body) %>%
+    count(topic, word, sort = T)  %>%
+    bind_tf_idf(word, topic, n) %>%
+    group_by(topic) %>%
+    top_n(100, tf_idf) %>%
+    ungroup()
+  }
+```
+
+```{r}
+class2words <- gen_tf_idf()
+class3words <- gen_tf_idf(k = 3)
+class4words <- gen_tf_idf(k = 4)
+
+write_csv(class2words, path = 'tf_idf_class2.csv')
+write_csv(class3words, path = 'tf_idf_class3.csv')
+write_csv(class4words, path = 'tf_idf_class4.csv')
+```
+
+```{r eval = F}
+class2words %>%
+  arrange(-n) %>% 
+  select(tf, topic) %>% 
+  mutate(rank = row_number()) %>%
+  write_csv('../Prelim_Results/models_tf_k2.csv')
+
+class3words %>%
+  arrange(-n) %>% 
+  select(tf, topic) %>%
+  mutate(rank = row_number()) %>%
+  write_csv('../Prelim_Results/models_tf_k3.csv')
+
+class4words %>%
+  arrange(-n) %>% 
+  select(tf, topic) %>%
+  mutate(rank = row_number()) %>%
+  write_csv('../Prelim_Results/models_tf_k4.csv')
+```
+
+
+```{r}
+count_ns <- function(texts, class, k) {
+  if (k == 2) {
+    
+    words <- class2words %>%
+      filter(topic == class) %>%
+      pull(word)
+    
+    regex_filter <- paste0('(?<=[:space:])', words, '(?=[:space:])', collapse = '|')
+    
+    return(str_count(texts, pattern = regex_filter))
+    
+  } else if (k == 3) {
+    
+    words <- class3words %>%
+      filter(topic == class) %>%
+      pull(word)
+    
+    regex_filter <- paste0('(?<=[:space:])', words, '(?=[:space:])', collapse = '|')
+    
+    return(str_count(texts, pattern = regex_filter))
+    
+  } else {
+    
+     words <- class4words %>%
+      filter(topic == class) %>%
+      pull(word)
+    
+    regex_filter <- paste0('(?<=[:space:])', words, '(?=[:space:])', collapse = '|')
+    
+    return(str_count(texts, pattern = regex_filter))
+  }
+}
+
+start <- Sys.time()
+que_clean <- que_clean %>%
+  mutate(k2_class_n_words = unlist(map2(textdata, topic.k2, count_ns, k = 2)),
+         k3_class_n_words = unlist(map2(textdata, topic.k3, count_ns, k = 3)),
+         k4_class_n_words = unlist(map2(textdata, topic.k4, count_ns, k = 4)))
+end <- Sys.time() - start
+```
+
+
+```{r}
+rfunc <- read_csv('https://raw.githubusercontent.com/v-kozhevnikov/GitHub_R_commands/master/data/top_2000_functions.csv')
+
+
+func <- unique(rfunc$content)
+pkg <- unique(rfunc$library)
+```
+
+```{r}
+count_func <- function(texts) {
+  
+  regex_filter <- paste0('(?<=[:space:])', func, '(?=[:space:]|\\()', collapse = '|')
+  
+  return(str_count(texts, pattern = regex_filter))
+}
+
+count_pkg <- function(texts) {
+  
+  regex_filter <- paste0('(?<=[:space:])', pkg, '(?=[:space:]|\\()', collapse = '|')
+  
+  return(str_count(texts, pattern = regex_filter))
+}
+```
+
+```{r}
+que_clean <- que_clean %>%
+  mutate(n_func = count_func(textdata),
+         n_pkg  = count_pkg(textdata))
+
+```
+
+
+Join number of tags ued for each questions
+
+```{r}
+count_func2 <- function(texts) {
+  x <- rfunc %>%
+    filter(content == texts) %>%
+    nrow()
+  return(x)
+}
+
+rfunc_pkg <- rfunc %>%
+  distinct(library)
+
+count_pkg2 <- function(texts) {
+  x <- rfunc_pkg %>%
+    filter(library == texts) %>%
+    nrow()
+  return(x)
+}
+
+Tags <- read_csv("../Raw_data/Tags.csv")
+
+nTags <- Tags %>%
+  separate(Tag, c('Tag1', 'Tag2'), sep = '-', remove = F) %>%
+  select(-Tag) %>%
+  pivot_longer(-Id, names_to = 'rmv_label', values_to = 'Tag') %>%
+  filter(!is.na(Tag)) %>%
+  select(-rmv_label) %>%
+  rename(QuestionId = Id)
+  # mutate(Tag = str_trim(Tag),
+  #        n_tag_func = unlist(map(Tag, count_func2)),
+  #        n_tag_pkg  = unlist(map(Tag, count_pkg2))) %>%
+  # group_by(Id) %>%
+  # summarise(n_tags = n(),
+  #           n_tag_func = sum(n_tag_func),
+  #           n_tag_pkg  = sum(n_tag_pkg)) %>%
+  # ungroup()
+
+write_csv(nTags, path = 'nTags.csv')
+
+nTags %>%
+  group_by(Tag) %>%
+  count(Tag, sort = T)
+```
+
+
+```{r}
+que_clean_tags <- que_clean %>%
+  left_join(nTags, by = c('document' = 'Id')) %>%
+  select(-textdata)
+
+write_csv(que_clean_tags, path = 'Questions_for_modeling.csv')
+```
+
