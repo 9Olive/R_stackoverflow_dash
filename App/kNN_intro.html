@@ -1,0 +1,40 @@
+<div style='text-indent: 36px; padding-left: -36px; font-size:14px;'>
+    <p>
+        k-NN, or k-Nearest-Neighbors, is a non-linear modeling technique that that leverages the geometry of the data in
+        p-dimension Euclidean space. The algorithm considers the k-nearest data points to classify a new data point. For
+        classification a majority vote rule from the nearest neighbors decides the classifcation, and ties are randomly
+        decided.
+    </p>
+    <br>
+    To used the following variables to model:
+    <ul>
+        <li>Number of terms that are in a bag of words containing top distinct terms. </li>
+        <li>Number of R function terms identified.</li>
+        <li>Number of R package terms identified.</li>
+        <li>Number of tags used in the question.</li>
+        <li>Number of tags that are R functions.</li>
+        <li>Number of tags that are R packages</li>
+    </ul>
+    <br>
+    <p>
+        I did not use the CreationDate. The resulting kNN algorithm operated on a 6-dimensional space. The
+        <code>class::knn()</code> function is not a general framework model as it requires the geometry of the points to
+        quantitate new data. The model was evaluated on a held out test set and to determine the optimal number of
+        neighbors to use, 10-fold cross validation was employed. The full results are shared in the table to the left.
+    </p>
+    <br>
+    <p>
+        kNN perfromed well. The lowest achieved Test Error Rate, misclassification rate, was 39% for a binary
+        classifcation model based on the LDA <em>k = 2</em>. This is better performing than a null model, or a model
+        that randomly guesses the class.
+        <br>
+        Additionally, the test error rate climbs as the number of categories to be predicted increases. Though they
+        still respectively perform better than a guess rule. For example, when <em>k = 3</em>, the best test error rate
+        is 51%. If one were to randomly choose 1 from 3, then the error rate would approximately be 67%.
+        <br>
+        For LDA, <em>k = 4</em>, I lowest test error achieved was 63%. Again, not bad but also not good.
+        <br>
+        In all LDA categories, the best kNN model seemed to be using 10 neighbors for prediction. The computation
+        required for higher nerighbors was forgone. The general trend seemed to suggest a model that reduces complexity.
+    </p>
+</div>
