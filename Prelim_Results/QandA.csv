@@ -1,0 +1,3476 @@
+Id,OwnerUserId_ans,CreationDate_ans,ParentId,Score_ans,IsAcceptedAnswer,Body_ans,OwnerUserId_que,CreationDate_que,Score_que,Title,Body_que
+255992,23263,2008-11-01T19:29:54Z,255697,2,TRUE,"<p>I've only come across both R and the Dirichlet distribution in passing, so I hope I'm not too much off the mark.</p>
+
+<p><a href=""https://stat.ethz.ch/pipermail/r-help/2006-September/113258.html"" rel=""nofollow noreferrer"">This mailing list message</a> seems to answer your question:</p>
+
+<blockquote>
+  <p>Scrolling through the results of
+  RSiteSearch(""dirichlet"") suggests some useful tools
+  in the VGAM package.  The gtools package and
+  MCMC packages also have ddirichlet() functions
+  that you could use to construct a (negative log) likelihood
+  function and optimize with optim/nlmin/etc.</p>
+</blockquote>
+
+<p>The deal, DPpackage and mix packages also may or may not provide what you need.</p>
+
+<p>Then again, these are all still CRAN packages, so I'm not sure if you already found these and found them unsuitable.</p>
+
+<p>As for searching for R, <a href=""http://www.r-project.org/"" rel=""nofollow noreferrer"">the R project site</a> itself already provides a few links on <a href=""http://www.r-project.org/search.html"" rel=""nofollow noreferrer"">its search page</a>.</p>
+",1941213,2008-11-01T15:48:30Z,4,Is there an R package for learning a Dirichlet prior from counts data,"<p>I'm looking for a an <code>R</code> package which can be used to train a Dirichlet prior from counts data.  I'm asking for a colleague who's using <code>R</code>, and don't use it myself, so I'm not too sure how to look for packages.  It's a bit hard to search for, because ""R"" is such a nonspecific search string.  There doesn't seem to be anything on <a href=""http://cran.r-project.org/web/packages/index.html"" rel=""nofollow noreferrer"">CRAN</a>, but are there any other places to look?</p>
+"
+440066,37751,2009-01-13T18:00:54Z,439526,9,TRUE,"<p>Clearly I should have worked on this for another hour before I posted my question. It's so obvious in retrospect. :)</p>
+
+<p>To use R's vector logic I took out the loop and replaced it with this:</p>
+
+<pre><code>st &lt;-   sample(c(12,17,24),10000,prob=c(20,30,50),replace=TRUE)
+p1 &lt;-   sample(c(12,17,24),10000,prob=c(20,30,50),replace=TRUE)
+p2 &lt;-   sample(c(12,17,24),10000,prob=c(20,30,50),replace=TRUE)
+year &lt;- rep(1991:2000,1000)
+</code></pre>
+
+<p>I can now do 100,000 samples almost instantaneous. I knew that vectors were faster, but dang. I presume 100,000 loops would have taken over an hour using a loop and the vector approach takes &lt;1 second. Just for kicks I made the vectors a million. It took ~2 seconds to complete. Since I must test to failure, I tried 10mm but ran out of memory on my 2GB laptop. I switched over to my Vista 64 desktop with 6GB ram and created vectors of length 10mm in 17 seconds. 100mm made things fall apart as one of the vectors was over 763mb which resulted in an allocation issue with R. </p>
+
+<p>Vectors in R are amazingly fast to me. I guess that's why I am an economist and not a computer scientist. </p>
+",37751,2009-01-13T15:58:48Z,23,Thinking in Vectors with R,"<p>I know that R works most efficiently with vectors and looping should be avoided. I am having a hard time teaching myself to actually write code this way. I would like some ideas on how to 'vectorize' my code. Here's an example of creating 10 years of sample data for 10,000 non unique combinations of state (<code>st</code>), plan1 (<code>p1</code>) and plan2 (<code>p2</code>):</p>
+
+<pre><code>st&lt;-NULL
+p1&lt;-NULL
+p2&lt;-NULL
+year&lt;-NULL
+i&lt;-0
+starttime &lt;- Sys.time()
+
+while (i&lt;10000) {
+    for (years in seq(1991,2000)) {
+        st&lt;-c(st,sample(c(12,17,24),1,prob=c(20,30,50)))
+        p1&lt;-c(p1,sample(c(12,17,24),1,prob=c(20,30,50)))
+        p2&lt;-c(p2,sample(c(12,17,24),1,prob=c(20,30,50)))    
+        year &lt;-c(year,years)
+    }
+        i&lt;-i+1
+}
+Sys.time() - starttime
+</code></pre>
+
+<p>This takes about 8 minutes to run on my laptop. I end up with 4 vectors, each with 100,000 values, as expected. How can I do this faster using vector functions?</p>
+
+<p>As a side note, if I limit the above code to 1000 loops on i it only takes 2 seconds, but 10,000 takes 8 minutes. Any idea why?</p>
+"
+455286,54904,2009-01-18T15:12:24Z,445059,7,TRUE,"<p>Here's what seems like another very R-type way to generate the sums. Generate a vector that is as long as your input vector, containing nothing but the repeated sum of n elements. Then, subtract your original vector from the sums vector. The result: a vector (isums) where each entry is your original vector less the ith element.</p>
+
+<pre><code>&gt; (my.data$item[my.data$fixed==0])
+[1] 1 1 3 5 7
+&gt; sums &lt;- rep(sum(my.data$item[my.data$fixed==0]),length(my.data$item[my.data$fixed==0]))
+&gt; sums
+[1] 17 17 17 17 17
+&gt; isums &lt;- sums - (my.data$item[my.data$fixed==0])
+&gt; isums
+[1] 16 16 14 12 10
+</code></pre>
+",37751,2009-01-14T23:09:02Z,12,Vectorize my thinking: Vector Operations in R,"<p>So earlier I answered my own question on thinking in vectors in R. But now I have another problem which I can't 'vectorize.' I know vectors are faster and loops slower, but I can't figure out how to do this in a vector method:</p>
+
+<p>I have a data frame (which for sentimental reasons I like to call my.data) which I want to do a full marginal analysis on. I need to remove certain elements one at a time and 'value' the data frame then I need to do the iterating again by removing only the next element. Then do again... and again... The idea is to do a full marginal analysis on a subset of my data. Anyhow, I can't conceive of how to do this in a vector efficient way. </p>
+
+<p>I've shortened the looping part of the code down and it looks something like this:</p>
+
+<pre><code>for (j in my.data$item[my.data$fixed==0]) { # &lt;-- selects the items I want to loop 
+                                            #     through
+    my.data.it &lt;- my.data[my.data$item!= j,] # &lt;-- this kicks item j out of the list
+    sum.data &lt;-aggregate(my.data.it, by=list(year), FUN=sum, na.rm=TRUE) #&lt;-- do an
+                                                                         # aggregation
+
+    do(a.little.dance) &amp;&amp; make(a.little.love) -&gt; get.down(tonight) # &lt;-- a little
+                                                                   #  song and dance
+
+    delta &lt;- (get.love)                                         # &lt;-- get some love
+    delta.list&lt;-append(delta.list, delta, after=length(delta.list)) #&lt;-- put my love
+                                                                    #    in a vector 
+}
+</code></pre>
+
+<p>So obviously I hacked out a bunch of stuff in the middle, just to make it less clumsy. The goal would be to remove the j loop using something more vector efficient. Any ideas?</p>
+"
+467131,57626,2009-01-21T21:38:10Z,467110,12,TRUE,"<p>In most cases R is an interpreted language that runs in a read-evaluate-print loop.  There are numerous extensions to R that are written in other languages like C and Fortran where speed or interfacing with native libraries is helpful. </p>
+",11301,2009-01-21T21:33:13Z,5,Is R a compiled language?,"<p>I can't find it anywhere on the web (and I don't want to install it). Is the <a href=""http://en.wikipedia.org/wiki/R_(programming_language)"" rel=""nofollow noreferrer"">R language</a> a compiled language? How fast does it run a pre-written script? Does it do any kind of compilation, or just execute instructions line by line?</p>
+"
+476739,58681,2009-01-24T22:07:32Z,476726,7,TRUE,"<p>If <code>x</code> is your <code>data.frame</code> (or <code>matrix</code>) then</p>
+
+<pre><code>x[ ,apply(x, 2, function(z) !any(is.na(z)))]
+</code></pre>
+
+<p>Since your example uses <code>NULL</code>, <code>is.na(·)</code> will be replaced by <code>is.null(·)</code></p>
+
+<p>Alternatively you can look at <code>subset(·)</code>.</p>
+",277,2009-01-24T21:56:23Z,10,Filtering data in R,"<p>I have a CSV of file of data that I can load in R using <code>read.csv()</code></p>
+
+<p>Some of the data is missing, so I want to reduce the data frame down to set that consists entirely of non-missing data, i.e. if a <code>NULL</code> appears anywhere, I want to exclude that column and row from the filtered data set.</p>
+
+<p>I know I can probably do this fairly simply with the inbuilt R vector operations, but I am not quite sure how to do this exactly?</p>
+
+<p>To make my question a little more concrete, here is a quick sample of the data so you can see what I want to do.</p>
+
+<pre><code>DocID       Anno1    Anno7  Anno8
+1           7        NULL   8
+2           8        NULL   3
+44          10       2      3
+45          6        6      6
+46          1        3      4
+49          3        8      5
+62          4        NULL   9
+63          2        NULL   4
+67          11       NULL   3
+91          NULL     9      7
+92          NULL     7      5
+93          NULL     8      8
+</code></pre>
+
+<p>So given this input, I need some code that will reduce the output to this.</p>
+
+<pre><code>DocID       Anno8
+44          3
+45          6
+46          4
+49          5
+</code></pre>
+
+<p>As <code>Anno8</code> is the only column with non-NULL data, and there are only four rows with non-NULL data.</p>
+"
+511763,445,2009-02-04T15:12:59Z,498932,1,TRUE,"<p>I couldn't work out the project file so what I did in the end was to zip up all the files I wanted to deploy, add the zip file to the application and create a custom Installer class to unzip them (using CSharp ziplib)</p>
+",445,2009-01-31T14:50:28Z,3,What's the easiest way to install 100s of files in a Visual Studio setup project,"<p>I have a standard c# application that acts as a GUI front end for a an ""R"" statistics engine. ""R"" consists of approx 600 files in approx 50 different folders and can be ""installed"" on a machine through xcopy deployment.</p>
+
+<p>I would like to package up both the R engine and my c# gui into one setup.exe so that the user doesn't need to go and install R first and then my c# application seperately.</p>
+
+<p>I know that I can produce a setup project and then add in the R files one by one but adding all 600 files will be very tedious!</p>
+
+<p>Is there an easier way of doing what I want? Can I add the single R folder and automatically add the subfolders and files to save me adding them in one by one? Or maybe do an unzip procedure in my setup project which will unzip the R engine in one go?</p>
+"
+571930,37751,2009-02-21T01:54:56Z,560329,5,TRUE,"<p>I really want to help answer your question, but I gotta tell you, I can't make heads or tails of your data. I see a lot of opening parenthesis but no closing ones. The data looks sorted descending by whatever the values are on the bottom of each row. I have no idea what to make out of a value like ""(8.048,18.05]""</p>
+
+<p>Am I missing something obvious? Can you make a more simple example where your data structure is not a factor?</p>
+
+<p>I would generally expect a data frame or a matrix with two columns, one for the X and one for the Y. </p>
+
+<p>See if this example of sorting helps (I'm sort of shooting in the dark here)</p>
+
+<pre><code>tN &lt;- table(Ni &lt;- rpois(100, lambda=5))
+r &lt;- barplot(tN)
+
+#stop here and examine the plot
+#the next bit converts the matrix to a data frame,
+#  sorts it, and plots it again
+
+df&lt;-data.frame(tN)
+df2&lt;-df[order(df$Freq),]
+barplot(df2$Freq)
+</code></pre>
+",67405,2009-02-18T09:08:38Z,2,Sort the X axis in a barplot,"<p>I have binned data that looks like this:</p>
+
+<pre><code>  (8.048,18.05] (-21.95,-11.95] (-31.95,-21.95]   (18.05,28.05] (-41.95,-31.95]
+             81              76              18              18             12
+    (-132,-122]     (-122,-112]     (-112,-102]     (-162,-152]  (-102,-91.95]
+              6               6               6               5              5
+(-91.95,-81.95]     (-192,-182]   (28.05,38.05]   (38.05,48.05]  (58.05,68.05]
+              5               4               4               4              4
+  (78.05,88.05]     (98.05,108]     (-562,-552]     (-512,-502]    (-482,-472]
+              4               4               3               3              3
+    (-452,-442]     (-412,-402]     (-282,-272]     (-152,-142]  (48.05,58.05]
+              3               3               3               3              3
+  (68.05,78.05]       (118,128]       (128,138]     (-582,-572]    (-552,-542]
+              3               3               3               2              2
+    (-532,-522]     (-422,-412]     (-392,-382]     (-362,-352]    (-262,-252]
+              2               2               2               2              2
+    (-252,-242]     (-142,-132] (-81.95,-71.95]       (148,158]  (-1402,-1392]
+              2               2               2               2              1
+  (-1372,-1362]   (-1342,-1332]     (-942,-932]     (-862,-852]    (-822,-812]
+              1               1               1               1              1
+    (-712,-702]     (-682,-672]     (-672,-662]     (-632,-622]    (-542,-532]
+              1               1               1               1              1
+    (-502,-492]     (-492,-482]     (-472,-462]     (-462,-452]    (-442,-432]
+              1               1               1               1              1
+    (-432,-422]     (-352,-342]     (-332,-322]     (-312,-302]    (-302,-292]
+              1               1               1               1              1
+    (-202,-192]     (-182,-172]     (-172,-162] (-51.95,-41.95]  (88.05,98.05]
+              1               1               1               1              1
+      (108,118]       (158,168]       (168,178]       (178,188]      (298,308]
+              1               1               1               1              1
+      (318,328]       (328,338]       (338,348]       (368,378]      (458,468]
+              1               1               1               1              1
+</code></pre>
+
+<p>How can I plot this data so that the bin is sorted from most negative on the left to most positive on the right? Currently my graph looks <a href=""http://docs.google.com/Doc?id=dcvdrfrh_5cm5qkchw"" rel=""nofollow noreferrer"">like this</a>.  Notice that it is not sorted at all.  In particular the second bar (<code>value = 76</code>) is placed to the right of the first:</p>
+
+<pre><code> (8.048,18.05] (-21.95,-11.95]
+            81              76
+</code></pre>
+
+<p>This is the command I use to plot:</p>
+
+<pre><code>barplot(x,ylab=""Number of Unique Tags"", xlab=""Expected - Observed"")
+</code></pre>
+"
+587944,4892,2009-02-25T21:28:11Z,582653,15,TRUE,"<p>You need to use <code>strptime()</code> to convert the string to a date. For example:</p>
+
+<pre><code>strptime(""9:24 am"",format=""%I:%M %p"")
+</code></pre>
+
+<p>Then you can take differences just by taking one away from the other:</p>
+
+<pre><code>strptime(""9:24 am"",format=""%I:%M %p"")-strptime(""12:14 am"",format=""%I:%M %p"")
+Time difference of 9.166667 hours
+</code></pre>
+
+<p>You can store this and then do an <code>as.numeric()</code> if you just want the number out, otherwise you can pass around the time objects.</p>
+
+<p>Hope this helps!</p>
+",69117,2009-02-24T17:21:30Z,13,what is the best practice of handling time in R?,"<p>I am working with a survey dataset. It has two string vectors, start and finish, indicating the time of the day when the interview was started, and finished, respectively.</p>
+
+<p>They are character strings that look like: ""9:24 am"", ""12:35 pm"", and so forth. i am trying to calculate the duration of the interview based on these two. what is the best way of doing this?</p>
+
+<p>i know that, for dates, there are lots of classes or functions like <code>as.date()</code>, <code>as.Date()</code>, <code>chron()</code>, or <code>as.POSIXct()</code>. So i was looking for something like <code>as.time()</code>, but could not find it. Should I just append a made-up date and convert the whole thing into a <code>POSIX()</code> date-time class, then use <code>difftime()</code>? </p>
+
+<p>What is the best practice of handling time in R?</p>
+"
+597001,63225,2009-02-27T22:56:38Z,596976,3,TRUE,"<p>Most common application: it enables an anonymous function to call itself recursively.</p>
+
+<p>An excellent explanation can be found on <a href=""http://mvanier.livejournal.com/2897.html"" rel=""nofollow noreferrer"">Mike Vanier's livejournal page</a></p>
+",69117,2009-02-27T22:45:59Z,0,What is the Y function?,"<p>A friend of mine asked me if I understood the Y function. I didn't even know what it was. <code>? Y</code> did not get me anywhere.</p>
+
+<p>What is it?</p>
+"
+612518,37751,2009-03-04T21:28:26Z,596819,10,TRUE,"<p>You are, indeed, passing the object around and using some memory. But I don't think you can do an operation on an object in R without passing the object around. Even if you didn't create a function and did your operations outside of the function, R would behave basically the same. </p>
+
+<p>The best way to see this is to set up an example. If you are in Windows open Windows Task Manager. If you are in Linux open a terminal window and run the top command. I'm going to assume Windows in this example. In R run the following:</p>
+
+<pre><code>col1&lt;-rnorm(1000000,0,1)
+col2&lt;-rnorm(1000000,1,2)
+myframe&lt;-data.frame(col1,col2)
+
+rm(col1)
+rm(col2)
+gc()
+</code></pre>
+
+<p>this creates a couple of vectors called col1 and col2 then combines them into a data frame called myframe. It then drops the vectors and forces garbage collection to run. Watch in your windows task manager at the mem usage for the Rgui.exe task. When I start R it uses about 19 meg of mem. After I run the above commands my machine is using just under 35 meg for R. </p>
+
+<p>Now try this:</p>
+
+<pre><code>myframe&lt;-myframe+1
+</code></pre>
+
+<p>your memory usage for R should jump to over 144 meg. If you force garbage collection using gc() you will see it drop back to around 35 meg. To try this using a function, you can do the following:</p>
+
+<pre><code>doSomething &lt;- function(df) {
+    df&lt;-df+1-1
+return(df)
+}
+myframe&lt;-doSomething(myframe)
+</code></pre>
+
+<p>when you run the code above, memory usage will jump up to 160 meg or so. Running gc() will drop it back to 35 meg. </p>
+
+<p>So what to make of all this? Well, doing an operation outside of a function is not that much more efficient (in terms of memory) than doing it in a function. Garbage collection cleans things up real nice. Should you force gc() to run? Probably not as it will run automatically as needed, I just ran it above to show how it impacts memory usage. </p>
+
+<p>I hope that helps!</p>
+",69117,2009-02-27T21:49:17Z,11,What is the best way to avoid passing a data frame around?,"<p>I have 12 data frames to work with. They are similar and I have to do the same processing to each one, so I wrote a function that takes a data frame, processes it, and then returns a data frame. This works. But I am afraid that I am passing around a very big structure. I may be making temporary copies (am I?) This can't be efficient. What is the best way to avoid passing a data frame around? Thank you.</p>
+
+<pre><code>doSomething &lt;- function(df) {
+  // do something with the data frame, df
+  return(df)
+}
+</code></pre>
+"
+652180,41665,2009-03-16T21:16:57Z,652136,145,TRUE,"<p>I don't know R at all, but a bit of creative googling led me here: <a href=""http://tolstoy.newcastle.edu.au/R/help/05/04/1919.html"" rel=""noreferrer""><a href=""http://tolstoy.newcastle.edu.au/R/help/05/04/1919.html"" rel=""noreferrer"">http://tolstoy.newcastle.edu.au/R/help/05/04/1919.html</a></a></p>
+
+<p>The key quote from there:</p>
+
+<blockquote>
+  <p>I do not find explicit documentation for R on how to remove elements from lists, but trial and error tells me</p>
+  
+  <p>myList[[5]] &lt;- NULL</p>
+  
+  <p>will remove the 5th element and then ""close up"" the hole caused by deletion of that element. That suffles the index values, So I have to be careful in dropping elements. I must work from the back of the list to the front.</p>
+</blockquote>
+
+<p>A <a href=""http://tolstoy.newcastle.edu.au/R/help/05/04/1917.html"" rel=""noreferrer"">response to that post later in the thread</a> states:</p>
+
+<blockquote>
+  <p>For deleting an element of a list, see R FAQ 7.1</p>
+</blockquote>
+
+<p>And the <a href=""http://cran.r-project.org/doc/FAQ/R-FAQ.html#How-can-I-set-components-of-a-list-to-NULL_003f"" rel=""noreferrer"">relevant section of the R FAQ</a> says:</p>
+
+<blockquote>
+  <p>... Do not set x[i] or x[[i]] to NULL, because this will remove the corresponding component from the list. </p>
+</blockquote>
+
+<p>Which seems to tell you (in a somewhat backwards way) how to remove an element.</p>
+
+<p>Hope that helps, or at least leads you in the right direction.</p>
+",1447,2009-03-16T20:59:36Z,159,How can I remove an element from a list?,"<p>I have a list and I want to remove a single element from it.  How can I do this?</p>
+
+<p>I've tried looking up what I think the obvious names for this function would be in the reference manual and I haven't found anything appropriate.</p>
+"
+658574,37751,2009-03-18T14:44:54Z,657440,7,TRUE,"<p>I think the function you are looking for is <code>cumsum()</code> which will do a cumulative sum on a vector. </p>
+
+<pre><code>#put your data into 3 vectors
+x&lt;-c(-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9,10)
+dat1&lt;-c(0.0140149,0.00890835,0.00672276,0.00876399,0.00806879,0.0088366,0.00856872,0.0195384,0.0160239,0.0254455,0.0397413,0.0743316,0.0247501,0.0214285,0.0241462,0.0150943,0.0141398,0.0101515,0.0308843,0.0095504,0.00729676)
+dat2&lt;-c(0.014015,0.008918,0.006725,0.008794,0.008081,0.008851,0.008578,0.019609,0.016183,0.025785,0.040091,0.075545,0.025332,0.021778,0.024497,0.015241,0.014237,0.010295,0.031294,0.009606,0.007371)
+
+#create a new vector called cdat1 to hold the cumulative sum
+cdat1&lt;-cumsum(dat1)
+plot(x,cdat1)
+points(x,dat2,col=""red"")
+</code></pre>
+
+<p>I use the function points above in order to add dat2 to the existing plot. Run this in R and see if it gives you what you need. </p>
+",67405,2009-03-18T08:59:04Z,7,Cumulative Plot with Given X-Axis,"<p>I have data that looks like this.
+In which I want to plot accumulative value of dat1 with respect
+to x-axis. Also plot it together with dat2.</p>
+
+<pre><code>#x-axis dat1              dat2
+-10     0.0140149       0.0140146
+-9      0.00890835      0.00891768
+-8      0.00672276      0.00672488
+-7      0.00876399      0.00879401
+-6      0.00806879      0.00808141
+-5      0.0088366       0.00885121
+-4      0.00856872      0.00857769
+-3      0.0195384       0.0196094
+-2      0.0160239       0.0161829
+-1      0.0254455       0.0257845
+0       0.0397413       0.0400913
+1       0.0743316       0.0755453
+2       0.0247501       0.0253324
+3       0.0214285       0.021778
+4       0.0241462       0.0244967
+5       0.0150943       0.015241
+6       0.0141398       0.0142373
+7       0.0101515       0.0102948
+8       0.0308843       0.031294
+9       0.0095504       0.00960626
+10      0.00729676      0.0073713
+</code></pre>
+
+<p>What's the common way to do it in R?</p>
+
+<p>I looked at ECDF from Hmisc, it doesn't seem to do what I want.
+In particular it doesn't allow us to give x-axis value.</p>
+"
+688781,26575,2009-03-27T06:57:58Z,509595,3,TRUE,"<p>What I personally would do is to make a script in some scripting language to separate the different data sets before the file is read into R, and possibly do some of the necessary data conversions, too.</p>
+
+<p>If you want to do the splitting in R, look up <code>readLines</code> and <code>scan</code> &ndash; <code>read.csv2</code> is too high-level and is meant for reading a single data frame. You could write the different data sets into different files, or if you are ambitious, cook up file-like R objects that are usable with <code>read.csv2</code> and read from the correct parts of the underlying big file.</p>
+
+<p>Once you have dealt with separating the data sets into different files, use <code>read.csv2</code> on those (or whichever <code>read.table</code> variant is best &ndash; if those are not tabs but fixed-width fields, see <code>read.fwf</code>). If <code>&lt;NA&gt;</code> indicates ""not available"" in your file, be sure to specify it as part of <code>na.strings</code>. If you don't do that, R thinks you have non-numeric data in that field, but with the right <code>na.strings</code>, you automatically get the field converted into numbers. It seems that one of your fields can include time stamps like <code>00:00</code>, so you need to use <code>colClasses</code> and specify a class to which your time stamp format can be converted. If the built-in <code>Date</code> class doesn't work, just define your own <code>timestamp</code> class and an <code>as.timestamp</code> function that does the conversion.</p>
+",12677,2009-02-04T00:23:09Z,2,csv file with multiple time-series,"<p>I've imported a csv file with lots of columns and sections of data.</p>
+
+<pre><code>v &lt;- read.csv2(""200109.csv"", header=TRUE, sep="","", skip=""6"", na.strings=c(""""))
+</code></pre>
+
+<p>The layout of the file is something like this:</p>
+
+<pre><code>Dataset1
+time, data, .....
+0       0
+0       &lt;NA&gt;
+0       0
+
+Dataset2
+time, data, .....
+00:00   0
+0       &lt;NA&gt;
+0       0
+</code></pre>
+
+<p>(The headers of the different datasets is exactly the same.</p>
+
+<p>Now, I can plot the first dataset with:</p>
+
+<pre><code>plot(as.numeric(as.character(v$Calls.served.by.agent[1:30])), type=""l"")
+</code></pre>
+
+<p>I am curious if there is a better way to:</p>
+
+<ol>
+<li><p>Get all the numbers read as numbers, without having to convert.</p></li>
+<li><p>Address the different datasets in the file, in some meaningfull way.</p></li>
+</ol>
+
+<p>Any hints would be appreciated. Thank you.</p>
+
+<hr>
+
+<p>Status update:</p>
+
+<p>I haven't really found a good solution yet in R, but I've started writing a script in Lua to seperate each individual time-series into a seperate file. I'm leaving this open for now, because I'm curious how well R will deal with all these files. I'll get 8 files per day.</p>
+"
+732550,62970,2009-04-09T02:14:22Z,717747,2,TRUE,"<p>So you've actually asked about five questions (5 +/- 3).  As far as writing your own rect.hclust like function, the source is in <code>library/stats/R/identify.hclust.R</code> if you want to look at it.  </p>
+
+<p>I took a quick glance at it myself and am not sure it does what I thought it did from reading your description--it seems to be drawing <em>multiple</em> rectangles,  Also, the <code>x</code> selector appears to be hard coded to segregate the tags horizontally (which isn't what you want and there's no <code>y</code>).</p>
+
+<p>I'll be back, but in the meantime you might (in addition to looking at the source) try doing multiple rect.hclust with different <code>border=</code> colors and different <code>h=</code> values to see if a failure pattern emerges.</p>
+
+<p><strong>Update</strong></p>
+
+<p>I haven't had much luck poking at this either.  </p>
+
+<p>One possible kludge for the clipping would be to pad the labels with trailing spaces and then bring the edge of your rectangle in slightly (the idea being that just bringing the rectangle in would get it out of the clipping zone but overwrite the ends of the labels).</p>
+
+<p>Another idea would be to fill the rectangle with a translucent (low alpha) color, making a shaded area rather than a bounding box.</p>
+",19410,2009-04-04T20:21:37Z,8,How do I color edges or draw rects correctly in an R dendrogram?,"<p>I generated <a href=""http://farm4.static.flickr.com/3622/3411762935_b9429d9d68_o.png"" rel=""nofollow noreferrer"">this dendrogram</a> using R's <code>hclust()</code>, <code>as.dendrogram()</code> and <code>plot.dendrogram()</code> functions.</p>
+
+<p>I used the <code>dendrapply()</code> function and a local function to color leaves, which is working fine.</p>
+
+<p>I have results from a statistical test that indicate if a set of nodes (<em>e.g.</em> the cluster of ""<code>_+v\_stat5a\_01_</code>"" and ""<code>_+v\_stat5b\_01_</code>"" in the lower-right corner of the tree) are significant or important.</p>
+
+<p>I also have a local function that I can use with <code>dendrapply()</code> that finds the exact node in my dendrogram which contains significant leaves.</p>
+
+<p>I would like to either (following the example):</p>
+
+<ol>
+<li>Color the edges that join ""<code>_+v\_stat5a\_01_</code>"" and ""<code>_+v\_stat5b\_01_</code>""; or,</li>
+<li>Draw a <code>rect()</code> around ""<code>_+v\_stat5a\_01_</code>"" and ""<code>_+v\_stat5b\_01_</code>""</li>
+</ol>
+
+<p>I have the following local function (the details of the ""nodes-in-leafList-match-nodes-in-clusterList"" condition aren't important, but that it highlights significant nodes):</p>
+
+<pre><code>markSignificantClusters &lt;&lt;- function (n) {
+  if (!is.leaf(n)) {
+     a &lt;- attributes(n)
+     leafList &lt;- unlist(dendrapply(n, listLabels))
+     for (clusterIndex in 1:length(significantClustersList[[1]])) {
+       clusterList &lt;- unlist(significantClustersList[[1]][clusterIndex])
+       if (nodes-in-leafList-match-nodes-in-clusterList) {
+          # I now have a node ""n"" that contains significant leaves, and
+          # I'd like to use a dendrapply() call to another local function
+          # which colors the edges that run down to the leaves; or, draw
+          # a rect() around the leaves
+       }
+     }
+  }
+}
+</code></pre>
+
+<p>From within this <code>if</code> block, I have tried calling <code>dendrapply(n, markEdges)</code>, but this did not work:</p>
+
+<pre><code>markEdges &lt;&lt;- function (n) {
+  a &lt;- attributes(n)
+  attr(n, ""edgePar"") &lt;- c(a$edgePar, list(lty=3, col=""red""))
+}
+</code></pre>
+
+<p>In my ideal example, the edges connecting ""<code>_+v\_stat5a\_01_</code>"" and ""<code>_+v\_stat5b\_01_</code>"" would be dashed and of a red color.</p>
+
+<p>I have also tried using <code>rect.hclust()</code> within this <code>if</code> block:</p>
+
+<pre><code>ma &lt;- match(leafList, orderedLabels)  
+rect.hclust(scoreClusterObj, h = a$height, x = c(min(ma), max(ma)), border = 2)
+</code></pre>
+
+<p>But the result does not work with horizontal dendrograms (<em>i.e.</em> dendrograms with horizontal labels). <a href=""http://farm4.static.flickr.com/3331/3410126060_f8f06c4498_o.png"" rel=""nofollow noreferrer"">Here is an example</a> (note the red stripe in the lower-right corner). Something is not correct about the dimensions of what <code>rect.hclust()</code> generates, and I don't know how it works, to be able to write my own version.</p>
+
+<p>I appreciate any advice for getting <code>edgePar</code> or <code>rect.hclust()</code> to work properly, or to be able to write my own <code>rect.hclust()</code> equivalent.</p>
+
+<p><strong>UPDATE</strong></p>
+
+<p>Since asking this question, I used <code>getAnywhere(rect.hclust())</code> to get the functional code that calculates parameters and draws the <code>rect</code> object. I wrote a custom version of this function to handle horizontal and vertical leaves, and call it with <code>dendrapply()</code>.</p>
+
+<p>However, there is some kind of clipping effect that removes part of the <code>rect</code>. For horizontal leaves (leaves that are drawn on the right side of the tree), the rightmost edge of the <code>rect</code> either disappears or is thinner than the border width of the other three sides of the <code>rect</code>. For vertical leaves (leaves that are drawn on the bottom of the tree), the bottommost edge of the <code>rect</code> suffers the same display problem.</p>
+
+<p>What I had done as a means of marking significant clusters is to reduce the width of the <code>rect</code> such that I render a vertical red stripe between the tips of the cluster edges and the (horizontal) leaf labels. </p>
+
+<p>This eliminates the clipping issue, but introduces another problem, in that the space between the cluster edge tips and the leaf labels is only six or so pixels wide, which I don't have much control over. This limits the width of the vertical stripe. </p>
+
+<p>The worse problem is that the <code>x</code>-coordinate that marks where the vertical stripe can fit between the two elements will change based on the width of the larger tree (<code>par[""usr""]</code>), which in turn depends on how the tree hierarchy ends up being structured.</p>
+
+<p>I wrote a ""correction"" or, better termed, a hack to adjust this <code>x</code> value and the <code>rect</code> width for horizontal trees. It doesn't always work consistently, but for the trees I am making, it seems to keep from getting too close to (or overlapping) edges and labels.</p>
+
+<p>Ultimately, a better fix would be to find out how to draw the <code>rect</code> so that there is no clipping. Or a consistent way to calculate the specific <code>x</code> position in between tree edges and labels for any given tree, so as to center and size the stripe properly.</p>
+
+<p>I would also be very interested in a method for annotating edges with colors or line styles.</p>
+"
+736618,66519,2009-04-10T03:15:17Z,736541,16,TRUE,"<p>See <a href=""http://blog.revolution-computing.com/2009/01/10-tips-for-making-your-r-graphics-look-their-best.html"" rel=""noreferrer"">tip 7</a> about adjusting the margins.</p>
+
+<p>Excerpt:</p>
+
+<p>To remove the space reserved for labels, use par(mar=...).  For example</p>
+
+<pre><code>png(file=""notitle.png"",width=400, height=350)
+par(mar=c(5,3,2,2)+0.1)
+hist(rnorm(100),ylab=NULL,main=NULL)
+dev.off()
+</code></pre>
+",85950,2009-04-10T02:32:21Z,12,Plots without titles/labels in R,"<p>In <a href=""http://www.r-project.org/"" rel=""nofollow noreferrer"">R</a> is there any way to produce plots which have no title and which use the space the title would otherwise have taken up?</p>
+
+<p>In <code>plot()</code>, <code>main</code>, <code>sub</code>, <code>xlab</code>, and <code>ylab</code> all default to <code>NULL</code>, but this just leaves blank space where they would have been, ditto for setting them to ''.  It would be nice if not including them meant that the entire plot space was utilized rather than leaving extra empty space on the edges.  This is all especially relevant in printing plots to file devices like <code>pdf()</code>, <code>png()</code>, etc.</p>
+"
+743846,60617,2009-04-13T13:06:55Z,743812,97,TRUE,"<ul>
+<li>Rolling Means/Maximums/Medians in the <a href=""http://cran.r-project.org/package=zoo"" rel=""nofollow noreferrer"">zoo</a> package (rollmean)</li>
+<li>MovingAverages in <a href=""http://cran.r-project.org/package=TTR"" rel=""nofollow noreferrer"">TTR</a></li>
+<li>ma in <a href=""http://cran.r-project.org/package=forecast"" rel=""nofollow noreferrer"">forecast</a></li>
+</ul>
+",14744,2009-04-13T12:52:51Z,125,Calculating moving average,"<p>I'm trying to use R to calculate the moving average over a series of values in a matrix. The normal R mailing list search hasn't been very helpful though. There doesn't seem to be a <a href=""http://www.statmethods.net/management/functions.html"" rel=""noreferrer"">built-in function</a> in R will allow me to calculate moving averages. Do any packages provide one? Or do I need to write my own?</p>
+"
+751342,26575,2009-04-15T11:45:36Z,750703,18,TRUE,"<p>One of the nice things about R is that you can view the source of many functions:</p>
+
+<pre><code>&gt; dev.off
+function (which = dev.cur()) 
+{
+    if (which == 1) 
+        stop(""cannot shut down device 1 (the null device)"")
+    .Internal(dev.off(as.integer(which)))
+    dev.cur()
+}
+&lt;environment: namespace:grDevices&gt;
+</code></pre>
+
+<p>So it calls <code>.Internal(dev.off(...))</code> and then returns dev.cur(), which I suppose would be useful if you have several devices open so you know which one became active. You could use <code>.Internal(dev.off(as.integer(dev.cur())))</code> in your script, or even patch <code>dev.off</code> to only return the value of <code>dev.cur()</code> if it is something else than the null device, and send the patch to the maintainers of R.</p>
+
+<p>Also, <code>graphics.off()</code> calls <code>dev.off()</code> for all devices and doesn't return anything.</p>
+",85950,2009-04-15T07:55:21Z,28,"Suppressing ""null device"" output with R in batch mode","<p>I have a number of bash scripts which invoke R scripts for plotting things.  Something like:  </p>
+
+<pre><code>#!/bin/bash
+R --vanilla --slave &lt;&lt;RSCRIPT
+cat(""Plotting $1 to $2\n"")
+input &lt;- read.table(""$1"")
+png(""$2"")
+plot(as.numeric(input[1,]))
+dev.off()
+RSCRIPT
+</code></pre>
+
+<p>The problem is that despite <code>--slave</code>, the call to <code>dev.off()</code> prints the message <code>null device 1</code>.  Once there are a lot of plots being done, or for more complex scripts which plot to a number of files, this gets to be a real hassle.</p>
+
+<p>Is there some way to suppress this message?</p>
+"
+776377,26575,2009-04-22T09:32:47Z,775116,9,TRUE,"<p>It's pretty tricky:</p>
+
+<pre><code>m &lt;- match.call(expand.dots = FALSE)
+# ...
+m[[1L]] &lt;- as.name(""model.frame"")
+m &lt;- eval(m, parent.frame())
+</code></pre>
+
+<p>The function uses <code>match.call</code> to find out how it is being called, modifies the call to replace the called function by <code>model.frame</code>, and calls it via <code>eval</code> with the parameters it received (although the part I replaced by <code># ...</code> removes several of the parameters), and <code>model.frame</code> uses the <code>formula</code> parameter. See the documentation of <code>match.call</code>, <code>eval</code>, and <code>model.frame</code>, and experiment a little, e.g. try to understand what is happening here:</p>
+
+<pre><code>f &lt;- function(formula, data) { 
+  m &lt;- match.call()
+  m[[1L]] &lt;- as.name('model.frame')
+  eval(m, parent.frame())
+}
+f(x ~ y)
+Error in eval(expr, envir, enclos) : object 'x' not found
+x &lt;- c(1,2,3)
+f(x ~ y)
+Error in eval(expr, envir, enclos) : object 'y' not found
+y &lt;- c(3,4,5)
+f(x ~ y)
+  x y
+1 1 3
+2 2 4
+3 3 5
+d &lt;- as.data.frame(matrix(c(1,2,3,4),nrow=2))
+names(d) &lt;- c('foo', 'bar')
+f(foo ~ bar, d)
+  foo bar
+1   1   3
+2   2   4
+</code></pre>
+",1447,2009-04-21T23:30:47Z,7,How can a function parameter be used without mentioning it in the function body?,"<p>I've been trying to learn more about R (and writing C extensions) and I thought it might help to read the source for some well known packages.  I decided to start with rpart which is defined as:</p>
+
+<pre><code>rpart &lt;- function(formula, data, weights, subset,
+       na.action=na.rpart, method, model=FALSE, x=FALSE, y=TRUE,
+       parms, control, cost, ...)
+</code></pre>
+
+<p>I did a quick search through the source and I don't see formula mentioned anywhere in the function body yet I know that somehow rpart is using that parameter.  How is it that rpart is using formula without its name being in the function body?</p>
+"
+781200,16240,2009-04-23T10:51:09Z,780796,47,TRUE,"<p>Use '###' if you don't want the comments indented.  According to the <a href=""http://ess.r-project.org/Manual/ess.html#Indenting"" rel=""noreferrer"">manual</a>,</p>
+
+<blockquote>
+  <p>By default, comments beginning with
+  ‘###’ are aligned to the beginning of
+  the line. Comments beginning with ‘##’
+  are aligned to the current level of
+  indentation for the block containing
+  the comment. Finally, comments
+  beginning with ‘#’ are aligned to a
+  column on the right (the 40th column
+  by default, but this value is
+  controlled by the variable
+  comment-column,) or just after the
+  expression on the line containing the
+  comment if it extends beyond the
+  indentation column.</p>
+</blockquote>
+",84458,2009-04-23T08:29:19Z,39,Emacs ESS Mode - Tabbing for Comment Region,"<p>I am using the Emacs-Speaks-Statistics (ESS) mode for Emacs.  When editing R code, any comment lines (those starting with #) automatically get tabbed to the far right when I create a new line above it.  How should I change my .emacs.el file to fix this?</p>
+
+<p>For example, I have:</p>
+
+<pre><code># Comment
+</code></pre>
+
+<p>Now, after putting my cursor at the beginning of the line and pressing Enter, I get:</p>
+
+<pre><code>                                # Comment
+</code></pre>
+
+<p>Thanks for any hints.</p>
+"
+789618,57428,2009-04-25T19:59:05Z,789602,5,TRUE,"<p>It's most likely that %% means integer division by modulo - the result is within 0..360 range. It's used for cases when some value can't get out of some reasonable range like longitute fo example that can be only within 0..360 degrees.</p>
+",94704,2009-04-25T19:51:45Z,2,What does %% mean?,"<p>From the question you can probably tell that I don't know much about code! My question is this:</p>
+
+<p>What does this code mean?</p>
+
+<pre><code>mnlong &lt;- 280.460 + .9856474 * time
+mnlong &lt;- mnlong %% 360
+mnlong[mnlong &lt; 0] &lt;- mnlong[mnlong &lt; 0] + 360
+</code></pre>
+
+<p>I understand that the <code>mnlong</code> and <code>time</code> are variables but the <code>%%</code> confuses me.</p>
+
+<p>Could someone give me a basic description?</p>
+"
+839718,90567,2009-05-08T13:09:40Z,736514,23,TRUE,"<blockquote>
+  <p>An explanation that uses the words 'error', 'summation', or 'permutated'
+  would be less helpful then a simpler explanation that didn't involve any
+  discussion of how random forests works.</p>
+  
+  <p>Like if I wanted someone to explain to me how to use a radio, I wouldn't
+  expect the explanation to involve how a radio converts radio waves into sound.</p>
+</blockquote>
+
+<p>How would you explain what the numbers in WKRP 100.5 FM ""mean"" without going into the pesky technical details of wave frequencies?  Frankly parameters and related performance issues with Random Forests are difficult to get your head around even if you understand some technical terms.</p>
+
+<p>Here's my shot at some answers:</p>
+
+<blockquote>
+  <p>-mean raw importance score of variable x for class 0</p>
+  
+  <p>-mean raw importance score of variable x for class 1</p>
+</blockquote>
+
+<p>Simplifying from the Random Forest <a href=""http://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm#varimp"" rel=""noreferrer"">web page</a>, raw importance score measures how much more helpful than random a particular predictor variable is in successfully classifying data.</p>
+
+<blockquote>
+  <p>-MeanDecreaseAccuracy</p>
+</blockquote>
+
+<p>I think this is only in the <a href=""http://cran.r-project.org/web/packages/randomForest/index.html"" rel=""noreferrer"">R module</a>, and I believe it measures how much inclusion of this predictor in the model reduces classification error.</p>
+
+<blockquote>
+  <p>-MeanDecreaseGini</p>
+</blockquote>
+
+<p><a href=""http://en.wikipedia.org/wiki/Gini_coefficient"" rel=""noreferrer"">Gini</a> is defined as ""inequity"" when used in describing a society's distribution of income, or a measure of ""node impurity"" in tree-based classification.  A low Gini (i.e. higher descrease in Gini) means that a particular predictor variable plays a greater role in partitioning the data into the defined classes.  It's a hard one to describe without talking about the fact that data in classification trees are split at individual nodes based on values of predictors.  I'm not so clear on how this translates into better performance.</p>
+",20895,2009-04-10T02:18:38Z,41,R Random Forests Variable Importance,"<p>I am trying to use the random forests package for classification in R.</p>
+
+<p>The Variable Importance Measures listed are:</p>
+
+<ul>
+<li>mean raw importance score of variable x for class 0</li>
+<li>mean raw importance score of variable x for class 1</li>
+<li><code>MeanDecreaseAccuracy</code></li>
+<li><code>MeanDecreaseGini</code></li>
+</ul>
+
+<p>Now I know what these ""mean"" as in I know their definitions.  What I want to know is how to use them.</p>
+
+<p>What I really want to know is what these values mean in only the context of how accurate they are, what is a good value, what is a bad value, what are the maximums and minimums, etc.</p>
+
+<p>If a variable has a high <code>MeanDecreaseAccuracy</code> or <code>MeanDecreaseGini</code> does that mean it is important or unimportant?  Also any information on raw scores could be useful too.
+I want to know everything there is to know about these numbers that is relevant to the application of them.  </p>
+
+<p>An explanation that uses the words 'error', 'summation', or 'permutated' would be less helpful then a simpler explanation that didn't involve any discussion of how random forests works.</p>
+
+<p>Like if I wanted someone to explain to me how to use a radio, I wouldn't expect the explanation to involve how a radio converts radio waves into sound.</p>
+"
+862039,90567,2009-05-14T07:39:15Z,855798,2,TRUE,"<p>Using <code>table</code>, no need to sort:</p>
+
+<pre><code>ctable &lt;- table(myList);
+counts &lt;- data.frame(Name = names(ctable),Count = as.vector(ctable));
+</code></pre>
+",1811,2009-05-13T02:34:55Z,0,"In R, what is a good way to aggregate String data","<p>In R (or S-PLUS), what is a good way to aggregate String data in a data frame?</p>
+
+<p>Consider the following:</p>
+
+<pre><code>myList &lt;- as.data.frame(c(""Bob"", ""Mary"", ""Bob"", ""Bob"", ""Joe""))
+</code></pre>
+
+<p>I would like the output to be:</p>
+
+<pre><code> [Bob,  3
+  Mary, 1
+  Joe,  1]
+</code></pre>
+
+<p>Currently, the only way I know how to do this is with the summary function.</p>
+
+<pre><code>&gt; summary(as.data.frame(myList))
+
+ Bob :3                                
+ Joe :1                                
+ Mary:1      
+</code></pre>
+
+<p>This feels like a hack. Can anyone suggest a better way?</p>
+"
+866766,14257,2009-05-15T02:36:48Z,805027,3,TRUE,"<p>I agree with Tal, generated files should not be in version control.</p>
+
+<p>In regards to your original question, I think the answer is no you can't stop R from doing that.  I found no mention of such options in the R pdf help file, <a href=""http://www.r-cookbook.com/rhelp/pdf.html"" rel=""nofollow noreferrer"">http://www.r-cookbook.com/rhelp/pdf.html</a></p>
+
+<p>If you take a look at the pdf function inside of R (just execute 'pdf' without any parenthesis for a printout of the code) it actually creates the pdf file with a call to:</p>
+
+<pre><code>.External(PDF, file, old$paper, old$family, old$encoding, old$bg, old$fg, 
+      old$width, old$height, old$pointsize, onefile, old$pagecentre, old$title, 
+      old$fonts, version[1L], version[2L], old$colormodel, old$useDingbats,
+      old$useKerning)
+</code></pre>
+
+<p>No mention of the options you are looking for, so you are probably out of luck.  Unless you want to track down the code R uses to generate a PDF and change it.</p>
+",85950,2009-04-30T01:32:43Z,4,Suppressing or setting CreationDate/ModDate in R pdf output,"<p>When R creates PDFs using pdf() it includes a CreationDate and a ModDate in the PDF.  I have a number of such generated PDFs in an svn repository and the effect is that when figures are remade by R, even with the same data, they appear as modified (rightly so) to svn.  What's the best way to get the two to play nicely together?</p>
+
+<p>I could simply remove those lines from the PDFs outside of R, but this extra step is undesirable.<br>
+I could set the system time to some fixed value as part of the running the scripts, but this is even less desirable.<br>
+I could probably even convince svn to use a specialized diff which ignored changes on those lines, but that sounds like more trouble than it's worth.</p>
+
+<p>A very pleasant solution would be if there were a way to prevent R putting those lines in the PDF file in the first place.  I have a file system to tell me when files were created and modified thank-you-very-much, I don't need that info stored within the file as well.</p>
+"
+876856,39578,2009-05-18T09:25:08Z,876711,11,TRUE,"<p>You don't need the two lines:</p>
+
+<pre><code>scale &lt;- data[1]
+serial &lt;- data[2]
+</code></pre>
+
+<p>as scale and serial are already set from the headers in the <code>read.table</code>.</p>
+
+<p>Also <code>scale &lt;- data[1]</code> creates an element from a <code>data.frame</code></p>
+
+<pre><code>  data[1]
+1     5
+2    10
+3    12
+4    15
+</code></pre>
+
+<p>whereas <code>scale</code> from the <code>read.table</code> is a vector</p>
+
+<pre><code>5 10 12 15
+</code></pre>
+
+<p>and the <code>plot(scale, serial)</code> function expects vector rather than a data.frame, so you just need to do </p>
+
+<pre><code>plot(scale, serial)
+</code></pre>
+
+<p>One approach to plotting the other columns of data on the y-axis:</p>
+
+<pre><code>plot(scale,serial, ylab="""")
+par(new=TRUE) 
+plot(scale,spawn,axes=F, ylab="""", type=""b"")
+par(new=TRUE) 
+plot(scale,for., axes=F, ylab="""", type=""b"")
+par(new=TRUE) 
+plot(scale,worker,axes=F, ylab="""", type=""b"")
+</code></pre>
+
+<p>There are probably better ways of doing this, but that is beyond my current R knowledge....</p>
+",422,2009-05-18T08:16:10Z,18,Plotting Simple Data in R,"<p>I have a comma separated file named <code>foo.csv</code> containing the following data:</p>
+
+<pre><code>scale, serial, spawn, for, worker
+5, 0.000178, 0.000288, 0.000292, 0.000300
+10, 0.156986, 0.297926, 0.064509, 0.066297
+12, 2.658998, 6.059502, 0.912733, 0.923606
+15, 188.023411, 719.463264, 164.111459, 161.687982
+</code></pre>
+
+<p>I essentially have two questions:</p>
+
+<p>1) How do I plot the first column (x-axis) versus the second column (y-axis)? I'm trying this (from reading <a href=""http://www.ats.ucla.edu/stat/R/gbe/scatter.htm"" rel=""noreferrer"">this site</a>):</p>
+
+<pre><code>data &lt;- read.table(""foo.csv"", header=T,sep="","")
+attach(data)
+scale &lt;- data[1]
+serial &lt;- data[2]
+plot(scale,serial)
+</code></pre>
+
+<p>But I get this error back:</p>
+
+<pre><code>Error in stripchart.default(x1, ...) : invalid plotting method
+</code></pre>
+
+<p>Any idea what I'm doing wrong? A <a href=""http://www.nabble.com/Problems-producing-a-simple-plot-td23347296.html"" rel=""noreferrer"">quick Google search</a> reveals someone else with the same problem but no relevant answer. UPDATE: It turns out it works fine if I skip the two assignment statements in the middle. Any idea why this is?</p>
+
+<p>The second question follows pretty easily after the first:</p>
+
+<p>2) How do I plot the first column (x-axis) versus all the other columns on the y-axis? I presume it's pretty easy once I get around the first problem I'm running into, but am just a bit new to R so I'm still wrapping my head around it.</p>
+"
+938632,4892,2009-06-02T09:25:43Z,937346,2,TRUE,"<p>I've not tried doing this with C/C++ but rather with Fortran. I had a similar problem in that some standard IO libraries weren't being included in the library I was created. In the end I just included them all and compiled using the Fortran compiler. I didn't use any of the R compiler utilities, just compiled as if I were compiling a static Fortran library normally for use with anything else. This worked fine.</p>
+
+<p>A debug path might be to compile as a static library using gcc (or whatever you're using) then try to include and call that static library from another C program, then if that works try with R.</p>
+
+<p>Hope this is helpful, writing these R packages is pretty hard unless you're using vanilla C or Fortran as far as I can tell.</p>
+",58434,2009-06-01T23:52:20Z,3,How to link with static libraries when building an R package,"<p>I'm creating a package that is going to be used by R (the statistical program), I'm not an expert using this application but I have managed to create a very simple package, using the following logic, I have some classes in C++, as the code has to be compiled using the R compiler and it only allows C code, I have a wrapper C code that call the C++ methods, and later I have an R script that call the methods exposed by the C code, so basically is a communication like R &lt;-> C&lt;->C++.</p>
+
+<p>The full tutorial that I used to create this package is found <a href=""http://www.stat.columbia.edu/~gelman/stuff_for_blog/AlanRPackageTutorial.pdf"" rel=""nofollow noreferrer"">here</a>, I add it as a reference.</p>
+
+<p>Now my problem is that I need to add some functionality to the package that I already created, what I need to do is to add code for late binding to a COM object which is another product that I created and that is registered using regasm tool.</p>
+
+<p>This is the c++ code that I'm using to try to late bind to the COM object, I'm trying to use IDispatch to do so:</p>
+
+<pre><code>{
+...
+CLSID clsid;    
+HRESULT hr = CLSIDFromProgID((WCHAR*)""My Com object ProgId"", &clsid);
+if(FAILED(hr))                      
+  return;   
+...     
+}
+</code></pre>
+
+<p>I didn't paste the whole code because only with these lines the compiler is giving me troubles already, the command I use to compile is </p>
+
+<pre><code>R CMD SHLIB Cclass.cc C++class.cc</code></pre>
+
+<p>Where ""Cclass.cc"" has the C code that call the c++ methods and ""C++class.cc"" is actually the C++ code.</p>
+
+<p>When I compile these classes the compiler says <pre><code>""undefined reference to `CLSIDFromProgID@8'collect2: ld returned 1 exit status""</pre></code></p>
+
+<p>I""m sure I have added all the header files that I need, that's why I believe my problem is that I'm not including ole32.lib and oleaut32.lib which are static libraries.</p>
+
+<p>So, my question is, how can I include this libraries in order to be able to use the methods for late binding, like CLSIDFromProgID(...) or QueryInterface(...). Also if anyone believes that my problem is not linking this libraries, but something else, it would be great if can point me to which my problem may be.</p>
+
+<p>Also have in mind that I need to link with those statics libraries in a way that they can be compiled without problem by the R compiler, which if I'm not wrong is a merely c compiler.</p>
+"
+969680,NA,2009-06-09T12:03:40Z,750786,111,TRUE,"<p>Content of <code>script.r</code>:</p>
+
+<pre><code>#!/usr/bin/Rscript
+
+cat(""Hello"")
+</code></pre>
+
+<p>Invocation from command line:</p>
+
+<pre><code>./script.r
+</code></pre>
+",85950,2009-04-15T08:31:35Z,94,What's the best way to use R scripts on the command line (terminal)?,"<p>It's very convenient to have R scripts for doing simple plots from the command line.  However, running R from bash scripts is not convenient at all.  The ideal might be something like</p>
+
+<pre><code>#!/path/to/R
+...
+</code></pre>
+
+<p>or</p>
+
+<pre><code>#!/usr/bin/env R
+...
+</code></pre>
+
+<p>but I haven't been able to make either of those work.</p>
+
+<p>Another option is keeping the scripts purely in R, e.g. <code>script.R</code>, and invoking it with <code>R --file=script.R</code> or similar.  However, occasionally a script will rely on obscure command line switches at which point part of the code exists outside the script.  Example: sneaking things into R from bash via a local .Rprofile, the desired switches are then everything <code>--vanilla</code> implies except <code>--no-init-file</code>.</p>
+
+<p>Another option is a bash script to store the R flags and be painlessly executable, which then calls the R script.  The problem is that this means a single program just got split into two files which now have to be keep in sync, transferred to new machines together, etc.</p>
+
+<p>The option I currently despise least is embedding the R in a bash script:</p>
+
+<pre><code>#!/bin/bash
+... # usage message to catch bad input without invoking R
+... # any bash pre-processing of input
+... # etc
+R --random-flags &lt;&lt;RSCRIPT
+# R code goes here
+RSCRIPT
+</code></pre>
+
+<p>Everything's in a single file.  It's executable and easily handles arguments.  The problem is that combining bash and R like this pretty much eliminates the possibility of any IDE not failing on one or the other, and makes my heart hurt real bad.</p>
+
+<p>Is there some better way I'm missing?</p>
+"
+1088800,2611,2009-07-06T19:25:31Z,1088639,25,TRUE,"<p>Here's one way by using a closure (in the programming language sense), i.e. store the count variable in an enclosing environment accessible only by your function:</p>
+
+<pre><code>make.f &lt;- function() {
+    count &lt;- 0
+    f &lt;- function(x) {
+        count &lt;&lt;- count + 1
+        return( list(mean=mean(x), count=count) )
+    }
+    return( f )
+}
+
+f1 &lt;- make.f()
+result &lt;- f1(1:10)
+print(result$count, result$mean)
+result &lt;- f1(1:10)
+print(result$count, result$mean)
+
+f2 &lt;- make.f()
+result &lt;- f2(1:10)
+print(result$count, result$mean)
+result &lt;- f2(1:10)
+print(result$count, result$mean)
+</code></pre>
+",57458,2009-07-06T18:48:46Z,18,Static Variables in R,"<p>I have a function in R that I call multiple times. I want to keep track of the number of times that I've called it and use that to make decisions on what to do inside of the function. Here's what I have right now:</p>
+
+<pre><code>f = function( x ) {
+   count &lt;&lt;- count + 1
+   return( mean(x) )
+}
+
+count = 1
+numbers = rnorm( n = 100, mean = 0, sd = 1 )
+for ( x in seq(1,100) ) {
+   mean = f( numbers )
+   print( count )
+}
+</code></pre>
+
+<p>I don't like that I have to declare the variable count outside the scope of the function. In C or C++ I could just make a static variable. Can I do a similar thing in the R programming language?</p>
+"
+1106010,135870,2009-07-09T19:33:34Z,1105659,52,TRUE,"<p>R lists can be thought of as hashes- vectors of objects that can be accessed by name. Using this approach you can add a new entry to the list like so:</p>
+
+<pre><code>key &lt;- ""width""
+value &lt;- 32
+
+mylist &lt;- list()
+mylist[[ key ]] &lt;- value
+</code></pre>
+
+<p>Here we use the string stored in the variable key to access a position in the list much like using the value stored in a loop variable i to access a vector through:</p>
+
+<pre><code>vector[ i ]
+</code></pre>
+
+<p>The result is:</p>
+
+<pre><code>myList
+$width
+[1] 32
+</code></pre>
+",60628,2009-07-09T18:20:00Z,41,How to add variable key/value pair to list object?,"<p>I have two variables, <code>key</code> and <code>value</code>, and I want to add them as a key/value pair to a list:</p>
+
+<pre><code>key = ""width""
+value = 32
+
+mylist = list()
+mylist$key = value
+</code></pre>
+
+<p>The result is this:</p>
+
+<pre><code>mylist
+# $key
+# [1] 32
+</code></pre>
+
+<p>But I would like this instead:</p>
+
+<pre><code>mylist
+# $width
+# [1] 32
+</code></pre>
+
+<p>How can I do this?</p>
+"
+1109211,60628,2009-07-10T12:21:28Z,1109017,43,TRUE,"<p>Actually the following works for me:</p>
+
+<pre><code>write(""prints to stderr"", stderr())
+
+write(""prints to stdout"", stdout())
+</code></pre>
+",60628,2009-07-10T11:25:47Z,39,How do you print to stderr in R?,"<p>How do you print to <code>stderr</code> in <code>R</code>?</p>
+
+<p>This would especially useful for scripts written in <code>Rscript</code>.</p>
+"
+1110408,7536,2009-07-10T15:53:07Z,1110363,8,TRUE,"<p><a href=""http://cran.r-project.org/web/packages/getopt/index.html"" rel=""nofollow noreferrer""><code>getopt</code> for R</a></p>
+",60628,2009-07-10T15:46:06Z,5,Is there a package to process command line options in R?,"<p>Is there a package to process command-line options in R? </p>
+
+<p>I know <code>commandArgs</code>, but it's too basic. Its result is basically the equivalent to <code>argc</code> and <code>argv</code> in <code>C</code>, but I'd need something on top of that, just like <code>boost::program_options</code> in <code>C++</code>, or <code>GetOptions::Long</code> in <code>perl</code>.</p>
+
+<p>In particular, I'd like to specify in advance what options are allowed and give an error message if the user specifies something else. </p>
+
+<p>The call would be like this (with user options --width=32 --file=foo.txt):</p>
+
+<pre><code>R --vanilla --args --width=32 --file=foo.txt &lt; myscript.R
+</code></pre>
+
+<p>or, if <code>Rscript</code> is used:</p>
+
+<pre><code>myscript.R --width=32 --file=foo.txt 
+</code></pre>
+
+<p>(Please don't say, ""why don't you write it yourself, it's not that hard"". In other languages you don't have to write it yourself either. :)</p>
+"
+1114828,2611,2009-07-11T22:34:52Z,1114699,6,TRUE,"<p>Quick and dirty ...</p>
+
+<pre><code>&gt; edges &lt;- data.frame(nodea=c(1,2,4,2,1), nodeb=c(1,2,3,4,5))
+
+&gt; adjlist &lt;- by(edges, edges$nodea, function(x) x$nodeb)
+
+&gt; for (i in as.character(unique(edges$nodea))) {
++   cat(i, ' -&gt; ', adjlist[[i]], '\n')
++ }
+
+1  -&gt;  1 5
+2  -&gt;  2 4
+4  -&gt;  3
+
+&gt; adjlist
+edges$nodea: 1
+[1] 1 5
+------------------------------------------------------------
+edges$nodea: 2
+[1] 2 4
+------------------------------------------------------------
+edges$nodea: 4
+[1] 3
+</code></pre>
+",136862,2009-07-11T21:36:42Z,6,Creating an adjacency list from a data.frame,"<p>I have a data.frame with 2 columns: Node A, Node B. Each entry in the frame implies an edge in a graph between node A and B. </p>
+
+<p>There must be a nice one-liner to convert this data.frame into an adjacency list. Any hints?</p>
+"
+1128618,2611,2009-07-14T23:20:29Z,1125907,4,TRUE,"<p>Try tweaking <code>mar</code>:</p>
+
+<pre><code>mar.old &lt;- par('mar')
+print(mar.old)
+
+par(mar=rep(10, 4)) # some ridiculous values
+plot(density(rnorm(1000)), ylab='foo\nbar\nbaz\nquux')
+
+par(mar=mar.old) # restore original
+</code></pre>
+
+<p>See <code>?par</code> for more info on <code>mar</code>:</p>
+
+<blockquote>
+  <p><em>mar</em>
+  A numerical vector of the form c(bottom, left, top, right) which gives the number of lines of margin to be specified on the four sides of the plot. The default is c(5, 4, 4, 2) + 0.1. </p>
+</blockquote>
+",130633,2009-07-14T14:46:43Z,3,Moving an R Plot header,"<p>I was trying to create a graph in R Plot and was just wondering if there was any way to move the side header label closer to the graph.</p>
+
+<p>I've made the font smaller and put the label into two lines, but when I put it into two lines the top line falls off the screen and the bottom line is rather far away from the numbered Y-Axis of the graph.  Is there anyway to move the label closer to the y-axis so the whole thing is visible?</p>
+"
+1136802,12960,2009-07-16T10:48:58Z,1136709,8,TRUE,"<p>You can use <a href=""http://rosuda.org/JRI/"" rel=""noreferrer"">JRI</a>. From that website:</p>
+
+<blockquote>
+  <p>JRI is a Java/R Interface, which
+  allows to run R inside Java
+  applications as a single thread.
+  Basically it loads R dynamic library
+  into Java and provides a Java API to R
+  functionality. It supports both simple
+  calls to R functions and a full
+  running REPL.</p>
+</blockquote>
+
+<p>This is part of the <a href=""http://www.rforge.net/rJava/"" rel=""noreferrer"">rJava</a> project (which allows calling of Java from R)</p>
+",85148,2009-07-16T10:26:36Z,9,Extend my Java application with R?,"<p>I am building an application that I want to have extended with modules that does some nr crunching and I would like to have R for that. What are my best options for extending my Java application with R?</p>
+"
+1143173,5856,2009-07-17T13:10:54Z,1142294,17,TRUE,"<p>First of all, the <code>plot.svm</code> function assumes that the data varies across two dimensions. The data you have used in your example is only one-dimensional and so the decision boundary would have to be plotted on a line, which isn't supported. Secondly, the function seems to need a data frame as input and you are working with vectors.</p>
+
+<p>This should work...</p>
+
+<pre><code>library(e1071)
+
+day = c(0,1,2,3,4,5,6)
+weather = c(1,0,0,0,0,0,0)
+happy = factor(c(T,F,F,F,F,F,F))
+
+d = data.frame(day=day, weather=weather, happy=happy)
+model = svm(happy ~ day + weather, data = d)
+plot(model, d)
+</code></pre>
+",140049,2009-07-17T09:35:57Z,11,How do I plot a classification graph of a SVM in R,"<p>I have an SVM in R and I would now like to plot the classification space for this machine. I have found some examples on the Internet, but I can't seem to make sense of them.</p>
+
+<p>My R script is as follows:</p>
+
+<pre><code>library(e1071)
+day_of_week &lt;- c(0,1,2,3,4,5,6)
+holiday &lt;- factor( c(T, F, F, F, F, F, T) )
+model &lt;- svm(day_of_week, holiday)
+plot(model, day_of_week, holiday)
+</code></pre>
+
+<p>I cannot get the plot command to work. I would like a graph something like this <a href=""http://bm2.genes.nig.ac.jp/RGM2/R_current/library/e1071/man/images/plot.svm_001.png"" rel=""noreferrer"">http://bm2.genes.nig.ac.jp/RGM2/R_current/library/e1071/man/images/plot.svm_001.png</a> </p>
+"
+1164111,134830,2009-07-22T09:30:23Z,1163640,3,TRUE,"<p>I've just tried several things that didn't work - I'm including them here to save others wasting their time.  For reference, I set <code>n &lt;- rnorm(1e5)</code> in your code above.</p>
+
+<p>Things that don't work:</p>
+
+<ol>
+<li><p>Setting <code>colormodel &lt;- ""gray""</code>.</p></li>
+<li><p>Using a different value of pch.  (Some other values <em>increase</em> the file size, but I found none that decrease it.)</p></li>
+<li><p>Setting <code>useKerning = FALSE</code>.</p></li>
+<li><p>Changing the width and height settings.</p></li>
+<li><p>Using pdf instead of postscript.</p></li>
+<li><p>Using CarioPS from the Cairo package.</p></li>
+</ol>
+
+<p>In the light of this, I think that you are unlikely to be able to decrease the file size using a vector format.  This means that you will have to use a raster format (most likely PNG).</p>
+",80458,2009-07-22T07:34:10Z,4,How to reduce size of R plots in EPS format?,"<p>I have a histogram with several hundred items, for which I do a Q-Q plot. This results in EPS that is 2.5 megabytes large. This is too much for a figure that is only going to be included in a publication and is not going to be viewed at 100x magnification.</p>
+
+<p>Is there any option in R to somehow output smaller EPS? I have searched docs to no avail. Or is my best option to, say, rasterize it afterwards at 300 dpi? If that's the case, any recommendations for the tool for this job?</p>
+
+<p>The R code for the plot is nothing fancy:</p>
+
+<pre><code>postscript(filename)
+qqnorm(n, main=title))
+qqline(n)
+dev.off()
+</code></pre>
+
+<p>Thanks.</p>
+
+<p>EDIT: Doh! My question mentioned outputting EPS, and then converting it to some raster format. When of course I could just generate PNG in the first place from R. Thanks for all the answers.</p>
+"
+1168147,4892,2009-07-22T20:48:01Z,1167448,21,TRUE,"<p>Matrix is the most common and has also just been accepted R standard installation (as of 2.9.0), so should be broadly available.</p>
+
+<p>Matrix in base:
+<a href=""https://stat.ethz.ch/pipermail/r-announce/2009/000499.html"" rel=""noreferrer"">https://stat.ethz.ch/pipermail/r-announce/2009/000499.html</a></p>
+",86684,2009-07-22T19:00:09Z,29,Most mature sparse matrix package for R?,"<p>There are at least two sparse matrix packages for R.  I'm looking into these because I'm working with datasets that are too big and sparse to fit in memory with a dense representation.  I want basic linear algebra routines, plus the ability to easily write C code to operate on them.  Which library is the most mature and best to use?</p>
+
+<p>So far I've found</p>
+
+<ul>
+<li><a href=""http://cran.r-project.org/web/packages/Matrix"" rel=""noreferrer"">Matrix</a> which has many reverse dependencies, implying it's the most used one.</li>
+<li><a href=""http://cran.r-project.org/web/packages/SparseM/index.html"" rel=""noreferrer"">SparseM</a> which doesn't have as many reverse deps.</li>
+<li>Various graph libraries probably have their own (implicit) versions of this; e.g. <a href=""http://cran.r-project.org/web/packages/igraph/index.html"" rel=""noreferrer"">igraph</a> and <a href=""http://cran.r-project.org/web/packages/network/index.html"" rel=""noreferrer"">network</a> (the latter is part of <a href=""http://statnetproject.org/"" rel=""noreferrer"">statnet</a>).  These are too specialized for my needs.</li>
+</ul>
+
+<p>Anyone have experience with this?</p>
+
+<p>From searching around <a href=""http://rseek.org"" rel=""noreferrer"">RSeek.org</a> a little bit, the <a href=""http://cran.r-project.org/web/packages/Matrix"" rel=""noreferrer"">Matrix</a> package seems the most commonly mentioned one.  I often think of <a href=""http://cran.r-project.org/web/views/"" rel=""noreferrer"">CRAN Task Views</a> as fairly authoritative, and the <a href=""http://cran.r-project.org/web/views/Multivariate.html"" rel=""noreferrer"">Multivariate Task View</a> mentions Matrix and SparseM.</p>
+"
+1169262,2002705,2009-07-23T02:25:24Z,1169248,347,TRUE,"<p>Both the <code>match()</code> (returns the first appearance) and <code>%in%</code> (returns a Boolean) functions are designed for this.</p>
+
+<pre><code>v &lt;- c('a','b','c','e')
+
+'b' %in% v
+## returns TRUE
+
+match('b',v)
+## returns the first location of 'b', in this case: 2
+</code></pre>
+",2002705,2009-07-23T02:20:53Z,338,R function for testing if a vector contains a given element,"<p>In R, how do you test a vector to see if it contains a given element?</p>
+"
+1169399,84458,2009-07-23T03:13:38Z,1169388,27,TRUE,"<p>This is one way to do it.  First I get the indices at which x is either 8 or 9.  Then we can verify that at those indices, x is indeed 8 and 9.</p>
+
+<pre><code>&gt; inds &lt;- which(x %in% c(8,9))
+&gt; inds
+[1]  1  3  4 12 15 19
+&gt; x[inds]
+[1] 8 9 9 8 9 8
+</code></pre>
+",84458,2009-07-23T03:10:59Z,12,Finding Multiple Elements in a Vector,"<p>Suppose I have the following vector:</p>
+
+<pre><code>&gt; x &lt;- sample(1:10,20,replace=TRUE)
+&gt; x
+ [1]  8  6  9  9  7  3  2  5  5  1  6  8  5  2  9  3  5 10  8  2
+</code></pre>
+
+<p>How can I find which elements are either 8 or 9?</p>
+"
+1169451,84458,2009-07-23T03:31:37Z,1169426,14,TRUE,"<p>One option is the <a href=""http://www.jstatsoft.org/v24/i06/"" rel=""noreferrer"">network</a> package, part of the <a href=""http://www.jstatsoft.org/v24/i09/"" rel=""noreferrer"">statnet</a> family of R packages for statistical social network analysis.  It handles network data in a sparse way, which is nice for larger data sets.</p>
+
+<p>Below, I do the following:</p>
+
+<ul>
+<li>load the edgelist (the first two columns) into a network object</li>
+<li>assign the counts to be an edge attribute called weight.  </li>
+<li>plot the network with gplot.  (See the help page for changing the thickness of the edges.)</li>
+<li>plot a sociomatrix (just a 5x5 set of blocks representing the adjacency matrix, where the (i,j) cell is shaded by the relative count)</li>
+</ul>
+
+<pre>
+A = read.table(file=""so.txt"",header=T)
+A
+      p1 p2 counts
+    1  a  b    100
+    2  a  c    200
+    3  a  d    100
+    4  b  c     80
+    5  b  d     90
+    6  b  e    100
+    7  c  d    100
+    8  c  e     40
+    9  d  e     60
+
+library(network)
+net = network(A[,1:2])
+# Get summary information about your network
+net
+     Network attributes:
+      vertices = 5 
+      directed = TRUE 
+      hyper = FALSE 
+      loops = FALSE 
+      multiple = FALSE 
+      bipartite = FALSE 
+      total edges= 9 
+        missing edges= 0 
+        non-missing edges= 9 
+        Vertex attribute names: 
+        vertex.names 
+     adjacency matrix:
+      a b c d e
+    a 0 1 1 1 0
+    b 0 0 1 1 1
+    c 0 0 0 1 1
+    d 0 0 0 0 1
+    e 0 0 0 0 0
+
+set.edge.attribute(net,""weight"",A[,3])
+gplot(net)
+
+## Another cool feature
+s = as.sociomatrix(net,attrname=""weight"")
+plot.sociomatrix(s)
+</pre>
+",84458,2009-07-23T03:24:25Z,10,Manipulating Network Data in R,"<p>I have a data frame detailing edge weights among N nodes.  Is there a package for working with this sort of data?</p>
+
+<p>For example, I would like to plot the following information as a network:</p>
+
+<pre><code>  p1 p2 counts
+1  a  b    100
+2  a  c    200
+3  a  d    100
+4  b  c     80
+5  b  d     90
+6  b  e    100
+7  c  d    100
+8  c  e     40
+9  d  e     60
+</code></pre>
+"
+1169495,2611,2009-07-23T03:46:55Z,1169456,217,TRUE,"<p>The R Language Definition is handy for answering these types of questions:</p>
+
+<ul>
+<li><a href=""http://cran.r-project.org/doc/manuals/R-lang.html#Indexing"" rel=""noreferrer"">http://cran.r-project.org/doc/manuals/R-lang.html#Indexing</a></li>
+</ul>
+
+<blockquote>
+<p>
+R has three basic indexing operators, with syntax displayed by the following examples
+<p>
+<code><pre>
+    x[i]
+    x[i, j]
+    x[[i]]
+    x[[i, j]]
+    x$a
+    x$""a""
+</pre></code>
+<p>
+For vectors and matrices the <code>[[</code> forms are rarely used, although they have some slight semantic differences from the [ form (e.g. it drops any names or dimnames attribute, and that partial matching is used for character indices). When indexing multi-dimensional structures with a single index, <code>x[[i]]</code> or <code>x[i]</code> will return the <code>i</code>th sequential element of <code>x</code>. 
+<p>
+For lists, one generally uses <code>[[</code> to select any single element, whereas <code>[</code> returns a list of the selected elements. 
+<p>
+The <code>[[</code> form allows only a single element to be selected using integer or character indices, whereas <code>[</code> allows indexing by vectors. Note though that for a list, the index can be a vector and each element of the vector is applied in turn to the list, the selected component, the selected component of that component, and so on. The result is still a single element.
+
+</blockquote>
+",135870,2009-07-23T03:33:18Z,337,The difference between [] and [[]] notations for accessing the elements of a list or dataframe,"<p>R provides two different methods for accessing the elements of a list or data.frame- the <code>[]</code> and <code>[[]]</code> operators.</p>
+
+<p>What is the difference between the two? In what situations should I use one over the other?</p>
+"
+1169585,84458,2009-07-23T04:19:53Z,1169573,2,TRUE,"<p>For loops in R are notoriously slow, but here there's another issue.  It's much faster to preallocate the results vector, res, rather append to res at each iteration.</p>
+
+<p>Below we can compare the speed of the above version with a version that simply starts with a vector, res, of length N and changes the ith element during the loop.</p>
+
+<pre><code>fn1 &lt;- function(N) {
+  res &lt;- c()
+  for (i in 1:N) {
+     x &lt;- rnorm(2)
+     res &lt;- c(res,x[2]-x[1])
+  }
+  res
+}
+fn2 &lt;- function(N) {
+  res &lt;- rep(0,N)
+  for (i in 1:N) {
+     x &lt;- rnorm(2)
+     res[i] &lt;- x[2]-x[1]
+  }
+  res
+}
+&gt; N &lt;- 50000
+&gt; system.time(res1 &lt;- fn1(N))
+   user  system elapsed 
+  6.568   0.256   6.826 
+&gt; system.time(res2 &lt;- fn2(N))
+   user  system elapsed 
+  0.452   0.004   0.496 
+</code></pre>
+
+<p>Also, as <a href=""https://stackoverflow.com/questions/1169573/large-loops-hang-in-r/1169607#1169607"">Sharpie points out</a>, we can make this slightly faster by using R functions like <code>apply</code> (or its relatives, <code>sapply</code> and <code>lapply</code>).</p>
+
+<pre><code>fn3 &lt;- function(N) {
+  sapply( 1:N, function( i ){ x &lt;- rnorm(2); return( x[2] - x[1] ) } )
+}
+&gt; system.time(res3 &lt;- fn3(N))
+   user  system elapsed 
+  0.397   0.004   0.397 
+</code></pre>
+",84458,2009-07-23T04:15:08Z,7,Large loops hang in R?,"<p>Suppose I want perform a simulation using the following function:</p>
+
+<pre><code>fn1 &lt;- function(N) {
+  res &lt;- c()
+  for (i in 1:N) {
+    x &lt;- rnorm(2)
+    res &lt;- c(res,x[2]-x[1])
+  }
+  res
+}
+</code></pre>
+
+<p>For very large <code>N</code>, computation appears to hang.  Are there better ways of doing this?</p>
+
+<p>(Inspired by: <a href=""https://stat.ethz.ch/pipermail/r-help/2008-February/155591.html"" rel=""noreferrer"">https://stat.ethz.ch/pipermail/r-help/2008-February/155591.html</a>)</p>
+"
+1169601,143377,2009-07-23T04:26:33Z,1169551,11,TRUE,"<p>look at the package sqldf. <a href=""http://code.google.com/p/sqldf/"" rel=""noreferrer"">http://code.google.com/p/sqldf/</a> It seems perfect for your needs.</p>
+",2002705,2009-07-23T04:04:21Z,12,SQL-like functionality in R,"<p>I am used to writing data manipulation logic in SQL and now that I am learning R I find myself sometimes just wanting to do something that would be simple in SQL but I have to learn a bunch of stuff with R to do the same manipulation on an R data frame. Is there a simple work around? </p>
+"
+1169672,2611,2009-07-23T04:55:41Z,1169539,30,TRUE,"<p>Here's one way using the <code>lme4</code> package.</p>
+
+<pre><code>&gt; library(lme4)
+&gt; d &lt;- data.frame(state=rep(c('NY', 'CA'), c(10, 10)),
++                 year=rep(1:10, 2),
++                 response=c(rnorm(10), rnorm(10)))
+
+&gt; xyplot(response ~ year, groups=state, data=d, type='l')
+
+&gt; fits &lt;- lmList(response ~ year | state, data=d)
+&gt; fits
+Call: lmList(formula = response ~ year | state, data = d)
+Coefficients:
+   (Intercept)        year
+CA -1.34420990  0.17139963
+NY  0.00196176 -0.01852429
+
+Degrees of freedom: 20 total; 16 residual
+Residual standard error: 0.8201316
+</code></pre>
+",37751,2009-07-23T04:00:09Z,58,Linear Regression and group by in R,"<p>I want to do a linear regression in R using the <code>lm()</code> function. My data is an annual time series with one field for year (22 years) and another for state (50 states). I want to fit a regression for each state so that at the end I have a vector of lm responses. I can imagine doing for loop for each state then doing the regression inside the loop and adding the results of each regression to a vector. That does not seem very R-like, however. In SAS I would do a 'by' statement and in SQL I would do a 'group by'. What's the R way of doing this?</p>
+"
+1172367,136862,2009-07-23T14:57:11Z,1169376,9,TRUE,"<p>While zoo is great, sometimes there are simpler ways. If you data behaves nicely, and is evenly spaced, the embed() function effectively lets you create multiple lagged version of a time series. If you look inside the VARS package for vector auto-regression, you will see that the package author chooses this route.</p>
+
+<p>For example, to calculate the 3 period rolling average of x, where x = (1 -> 20)^2:</p>
+
+<pre><code>&gt; x &lt;- (1:20)^2
+&gt; embed (x, 3)
+      [,1] [,2] [,3]
+ [1,]    9    4    1
+ [2,]   16    9    4
+ [3,]   25   16    9
+ [4,]   36   25   16
+ [5,]   49   36   25
+ [6,]   64   49   36
+ [7,]   81   64   49
+ [8,]  100   81   64
+ [9,]  121  100   81
+[10,]  144  121  100
+[11,]  169  144  121
+[12,]  196  169  144
+[13,]  225  196  169
+[14,]  256  225  196
+[15,]  289  256  225
+[16,]  324  289  256
+[17,]  361  324  289
+[18,]  400  361  324
+&gt; apply (embed (x, 3), 1, mean)
+ [1]   4.666667   9.666667  16.666667  25.666667  36.666667  49.666667
+ [7]  64.666667  81.666667 100.666667 121.666667 144.666667 169.666667
+[13] 196.666667 225.666667 256.666667 289.666667 324.666667 361.666667
+</code></pre>
+",2002705,2009-07-23T03:03:55Z,7,"Cumulative sums, moving averages, and SQL ""group by"" equivalents in R","<p>What's the most efficient way to create a moving average or rolling sum in R? How do you do the rolling function along with a ""group by""?</p>
+"
+1173161,83761,2009-07-23T17:04:13Z,1172485,43,TRUE,"<p>Here is a function I have in my <code>~/.Rprofile</code> file:</p>
+
+<pre><code>wideScreen &lt;- function(howWide=Sys.getenv(""COLUMNS"")) {
+  options(width=as.integer(howWide))
+}
+</code></pre>
+
+<p>Calling the function without the <code>howWide</code> argument sets the column to be the width of your terminal. You can optionally pass in the argument to set the width to an arbitrary number of your choosing.</p>
+
+<p>Almost like Josh's suggestion, but less magic :-)</p>
+",143813,2009-07-23T15:15:37Z,51,How to increase the number of columns using R in Linux,"<p>This may seem menial, but it affects my productivity. I am using R in terminal mode on Linux. Unlike the Windows IDE, Linux limits the number of columns to 80, thus making harder the inspection of data sets. Is there a way to set the max number of columns?</p>
+"
+1174826,143305,2009-07-23T22:24:39Z,1174799,100,TRUE,"<p>See <code>help(Sys.sleep)</code>.</p>
+
+<p>For example, from <code>?Sys.sleep</code></p>
+
+<pre><code>testit &lt;- function(x)
+{
+    p1 &lt;- proc.time()
+    Sys.sleep(x)
+    proc.time() - p1 # The cpu usage should be negligible
+}
+testit(3.7)
+</code></pre>
+
+<p>Yielding</p>
+
+<pre><code>&gt; testit(3.7)
+   user  system elapsed 
+  0.000   0.000   3.704 
+</code></pre>
+",23929,2009-07-23T22:17:24Z,86,"How to make execution pause, sleep, wait for X seconds in R?","<p>How do you pause an R script for a specified number of seconds or miliseconds? In many languages, there is a <code>sleep</code> function, but <code>?sleep</code> references a data set. And <code>?pause</code> and <code>?wait</code> don't exist.</p>
+
+<p>The intended purpose is for self-timed animations. The desired solution works without asking for user input.</p>
+"
+1176813,4892,2009-07-24T10:19:41Z,1176455,0,TRUE,"<p>You need to look at the manual page for <code>library.dynam()</code>. It should allow you to do what you want, eg.</p>
+
+<pre><code>function(mydata)
+{
+library.dynam(""mysharedobject"",package=c(""mypkg"")) 
+try(
+        output &lt;- .C(""myfunc_cversion"",
+                     in_data    = as.double(mydata),
+                     res_data   = as.double(res),
+                     PACKAGE    = ""mypkg"")
+        )
+        result &lt;- as.matrix(output$res_data)
+        return(result)
+}
+</code></pre>
+
+<p>where <code>mysharedobject</code> is the name of the shared object file without .dll/.so etc on the end.</p>
+
+<p>The man page also recommends that you only use it in the <code>.onLoad()</code> or <code>.First.lib()</code> functions.</p>
+
+<p>HTH</p>
+
+<hr>
+
+<p><a href=""http://sekhon.berkeley.edu/base/html/library.dynam.html"" rel=""nofollow noreferrer"">http://sekhon.berkeley.edu/base/html/library.dynam.html</a></p>
+",4907,2009-07-24T08:44:49Z,2,Portable use of dyn.load to call a C function in an R package,"<p>I am creating an R package that I intend to submit to CRAN that has a function calling a routine written in C.  How do I load the compiled C routine in the R function in platform-independent way?  I am able to make my package work on my intel-based Mac with:</p>
+
+<pre><code>function(mydata)
+{
+dyn.load(file.path(.Library,""mypkg/libs/i386"",paste(""mypkg"", .Platform$dynlib.ext, sep=""""))) 
+try(
+    output &lt;- .C(""myfunc_cversion"",
+                 in_data    = as.double(mydata),
+                 res_data   = as.double(res),
+                 PACKAGE    = ""mypkg"")
+    )
+    result &lt;- as.matrix(output$res_data)
+    return(result)
+}
+</code></pre>
+
+<p>The problem is the call to dyn.load where I cannot figure out how to specify the full path to the shared library for my installed package in a portable way.</p>
+
+<p>Is there another variable in R besides .Library that I should use, or is there a better function than dyn.load for this case?</p>
+"
+1178066,143305,2009-07-24T14:28:22Z,1177919,17,TRUE,"<p>1) Testing for existence:  Use %in% on the colnames, e.g. </p>
+
+<pre><code>&gt; example(data.frame)    # to get 'd'
+&gt; ""fac"" %in% colnames(d)
+[1] TRUE
+&gt; ""bar"" %in% colnames(d)
+[1] FALSE
+</code></pre>
+
+<p>2) You essentially have to create a new data.frame from the first half of the old, your new column, and the second half:</p>
+
+<pre><code>&gt; bar &lt;- data.frame(d[1:3,1:2], LastName=c(""Flim"", ""Flom"", ""Flam""), fac=d[1:3,3])
+&gt; bar
+  x y LastName fac
+1 1 1     Flim   C
+2 1 2     Flom   A
+3 1 3     Flam   A
+&gt; 
+</code></pre>
+",37751,2009-07-24T14:06:05Z,22,Does column exist and how to rearrange columns in R data frame,"<p>How do I add a column in the middle of an R data frame? I want to see if I have a column named ""LastName"" and then add it as the third column if it does not already exist. </p>
+"
+1178261,2611,2009-07-24T15:00:44Z,1177926,96,TRUE,"<p>I usually start out with some combination of:</p>
+
+<pre><code>typeof(obj)
+class(obj)
+sapply(obj, class)
+sapply(obj, attributes)
+attributes(obj)
+names(obj)
+</code></pre>
+
+<p>as appropriate based on what's revealed.  For example, try with:</p>
+
+<pre><code>obj &lt;- data.frame(a=1:26, b=letters)
+obj &lt;- list(a=1:26, b=letters, c=list(d=1:26, e=letters))
+data(cars)
+obj &lt;- lm(dist ~ speed, data=cars)
+</code></pre>
+
+<p>..etc.</p>
+
+<p>If <code>obj</code> is an S3 or S4 object, you can also try <code>methods</code> or <code>showMethods</code>, <code>showClass</code>, etc.  Patrick Burns' <a href=""http://www.burns-stat.com/pages/Tutor/R_inferno.pdf"" rel=""noreferrer"">R Inferno</a> has a pretty good section on this (sec #7).</p>
+
+<p><strong>EDIT</strong>: Dirk and Hadley mention <code>str(obj)</code> in their answers.  It really is much better than any of the above for a quick and even detailed peek into an object.</p>
+",37751,2009-07-24T14:07:07Z,86,R object identification,"<p>I am often ending up with a function producing output for which I don't understand the output data type. I'm expecting a list and it ends up being a list of lists or a data frame or something else. What's a good method or workflow for figuring out the output data type when first using a function?</p>
+"
+1181098,143305,2009-07-25T03:18:41Z,1181025,24,TRUE,"<p>Just the first part of that question can fill entire books. Just some quick choices:</p>
+
+<ul>
+<li><code>lm()</code> for standard linear models</li>
+<li><code>glm()</code> for generalised linear models (eg for logistic regression)</li>
+<li><code>rlm()</code> from package MASS for robust linear models</li>
+<li><code>lmrob()</code> from package robustbase for robust linear models</li>
+<li><code>loess()</code> for non-linear / non-parametric models</li>
+</ul>
+
+<p>Then there are domain-specific models as e.g. time series, micro-econometrics, mixed-effects and much more.  Several of the Task Views as e.g.  <a href=""http://cran.r-project.org/web/views/Econometrics.html"" rel=""noreferrer"">Econometrics</a> discuss this in more detail.  As for goodness of fit, that is also something one can spend easily an entire book discussing.</p>
+",2002705,2009-07-25T02:36:06Z,22,Goodness of fit functions in R,"<p>What functions do you use in R to fit a curve to your data and test how well that curve fits?  What results are considered good?</p>
+"
+1183240,143377,2009-07-25T22:32:32Z,1182932,2,TRUE,"<p>I posted this on the R list a while back and reported as a bug in R-bugs-list. I had no useful responses, so I twitted to see if the bug was reproducible or I was just missing something. JD Long was able to reproduce it and kindly posted the question here.</p>
+
+<p>Note that, at least in R, then, agrep is a misnomer since it does <em>not</em> matches regular expressions, while grep stands for ""Globally search for the Regular Expression and Print"". It shouldn't have a problem with patterns longer than the target vector. (i think!)</p>
+
+<p>In my linux server, all is well  but not so in my Mac and Windows machines.</p>
+
+<p>Mac:
+sessionInfo()
+R version 2.9.1 (2009-06-26) 
+i386-apple-darwin8.11.1 
+locale:
+en_US.UTF-8/en_US.UTF-8/C/C/en_US.UTF-8/en_US.UTF-8</p>
+
+<p>agrep(pattern,x,max.distance=30) 
+[1] 1</p>
+
+<blockquote>
+  <p>agrep(pattern,x,max.distance=31)
+  integer(0)
+  agrep(pattern,x,max.distance=32) 
+  integer(0)
+  agrep(pattern,x,max.distance=33)
+  [1] 1</p>
+</blockquote>
+
+<p>Linux:
+R version 2.9.1 (2009-06-26) 
+x86_64-unknown-linux-gnu </p>
+
+<p>locale:
+LC_CTYPE=en_US.UTF-8;LC_NUMERIC=C;LC_TIME=en_US.UTF-8;LC_COLLATE=en_US.UTF-8;LC_MONETARY=C;LC_MESSAGES=en_US.UTF-8;LC_PAPER=en_US.UTF-8;LC_NAME=C;LC_ADDRESS=C;LC_TELEPHONE=C;LC_MEASUREMENT=en_US.UTF-8;LC_IDENTIFICATION=C</p>
+
+<blockquote>
+  <p>agrep(pattern,x,max.distance=30) 
+  [1] 1
+  agrep(pattern,x,max.distance=31)
+  [1] 1
+  agrep(pattern,x,max.distance=32) 
+  [1] 1
+  agrep(pattern,x,max.distance=33)
+  [1] 1</p>
+</blockquote>
+",37751,2009-07-25T20:10:59Z,3,unexpected agrep() results related to max.distance in R,"<p><strong>EDIT:</strong> This bug was found in 32-bit versions of R was fixed in R version 2.9.2.</p>
+
+<hr>
+
+<p>This was tweeted to me by @leoniedu today and I don't have an answer for him so I thought I would post it here. </p>
+
+<p>I have read the documentation for agrep() (fuzzy string matching) and it appears that I don't fully understand the max.distance parameter. Here's an example:</p>
+
+<pre><code>pattern &lt;- ""Staatssekretar im Bundeskanzleramt""
+x &lt;- ""Bundeskanzleramt""
+agrep(pattern,x,max.distance=18) 
+agrep(pattern,x,max.distance=19)
+</code></pre>
+
+<p>That behaves exactly like I would expect. There are 18 characters different between the strings so I would expect that to be the threshold of a match. Here's what's confusing me:</p>
+
+<pre><code>agrep(pattern,x,max.distance=30) 
+agrep(pattern,x,max.distance=31)
+agrep(pattern,x,max.distance=32) 
+agrep(pattern,x,max.distance=33)
+</code></pre>
+
+<p>Why are 30 and 33 matches, but not 31 and 32? To save you some counting, </p>
+
+<pre><code>&gt; nchar(""Staatssekretar im Bundeskanzleramt"")
+[1] 34
+&gt; nchar(""Bundeskanzleramt"")
+[1] 16
+</code></pre>
+"
+1183488,37751,2009-07-26T01:14:56Z,1181021,7,TRUE,"<p>If you have a given matrix, m, then one way is the take the eigen vectors times the diagonal of the eigen values times the inverse of the original matrix. That should give us back the original matrix. In R that looks like:</p>
+
+<pre><code>m &lt;- matrix( c(1:16), nrow = 4)
+p &lt;- eigen(m)$vectors
+d &lt;- diag(eigen(m)$values)
+p %*% d %*% solve(p)
+m
+</code></pre>
+
+<p>so in that example [p %<em>% d %</em>% solve(p)] should be the same as m</p>
+
+<p>and yes, I totally stole that from the <a href=""http://wiki.r-project.org/rwiki/doku.php?id=guides:stats-with-r:02programming_in_r:03datastructures"" rel=""noreferrer"">R Wiki</a>. </p>
+",2002705,2009-07-25T02:32:27Z,6,Determining if a matrix is diagonalizable in the R Programming Language,"<p>I have a matrix and I would like to know if it is diagonalizable. How do I do this in the R programming language? </p>
+"
+1183715,2611,2009-07-26T04:15:48Z,1169534,34,TRUE,"<p>If I know that I'm going to need a function parametrized by some values and called repeatedly, I avoid globals by using a closure:</p>
+
+<pre><code>make.fn2 &lt;- function(a, b) {
+    fn2 &lt;- function(x) {
+        return( x + a + b )
+    }
+    return( fn2 )
+}
+
+a &lt;- 2; b &lt;- 3
+fn2.1 &lt;- make.fn2(a, b)
+fn2.1(3)    # 8
+fn2.1(4)    # 9
+
+a &lt;- 4
+fn2.2 &lt;- make.fn2(a, b)
+fn2.2(3)    # 10
+fn2.1(3)    # 8
+</code></pre>
+
+<p>This neatly avoids referencing global variables, instead using the enclosing environment of the function for a and b.  Modification of globals a and b doesn't lead to unintended side effects when fn2 instances are called.</p>
+",84458,2009-07-23T03:58:10Z,28,"Writing functions in R, keeping scoping in mind","<p>I often write functions that need to see other objects in my environment.  For example:</p>
+
+<pre><code>&gt; a &lt;- 3
+&gt; b &lt;- 3
+&gt; x &lt;- 1:5
+&gt; fn1 &lt;- function(x,a,b) a+b+x
+&gt; fn2 &lt;- function(x) a+b+x
+&gt; fn1(x,a,b)
+[1]  7  8  9 10 11
+&gt; fn2(x)
+[1]  7  8  9 10 11
+</code></pre>
+
+<p>As expected, both these functions are identical because <code>fn2</code> can ""see"" a and b when it executes.  But whenever I start to take advantage of this, within about 30 minutes I end up calling the function without one of the necessary variables (e.g. a or b).  If I don't take advantage of this, then I feel like I am passing around objects unnecessarily.</p>
+
+<p>Is it better to be explicit about what a function requires?  Or should this be taken care of via inline comments or other documentation of the function?  Is there a better way?</p>
+"
+1192044,76235,2009-07-28T05:17:52Z,1191689,9,TRUE,"<p>Here are four books on hierarchical modeling and bayesian analysis written with R code throughout the books.</p>
+
+<p>Hierarchical Modeling and Analysis for Spatial Data (Monographs on Statistics and Applied Probability) (Hardcover)
+<a href=""http://rads.stackoverflow.com/amzn/click/158488410X"" rel=""noreferrer"">http://www.amazon.com/gp/product/158488410X</a></p>
+
+<p>Data Analysis Using Regression and Multilevel/Hierarchical Models (Paperback)
+<a href=""http://rads.stackoverflow.com/amzn/click/052168689X"" rel=""noreferrer"">http://www.amazon.com/Analysis-Regression-Multilevel-Hierarchical-Models/dp/052168689X/ref=pd_sim_b_1</a></p>
+
+<p>Bayesian Computation with R (Use R) (Paperback)
+<a href=""http://rads.stackoverflow.com/amzn/click/0387922970"" rel=""noreferrer"">http://www.amazon.com/Bayesian-Computation-R-Use/dp/0387922970/ref=pd_bxgy_b_img_c</a></p>
+
+<p>Hierarchical Modelling for the Environmental Sciences: Statistical Methods and Applications (Oxford Biology) (Paperback) (I'm assuming this one has R code as both authors use R extensively)</p>
+
+<p>I know some python books dabble in multivariate analysis (Collective Intelligence, for example) but I haven't seen any that really delve into bayesian or hierarchical modeling.</p>
+",143813,2009-07-28T02:43:03Z,11,Hierarchical Bayes for R or Python,"<p>Hierarchical Bayes models are commonly used in Marketing, Political Science, and Econometrics. Yet, the only package I know of is <code>bayesm</code>, which is really a companion to a book (<em>Bayesian Statistics and Marketing</em>, by Rossi, et al.) Am I missing something? Is there a software package for R or Python doing the job out there, and/or a worked-out example in the associated language? </p>
+"
+1197154,143476,2009-07-28T22:41:31Z,1195826,292,TRUE,"<p>All you should have to do is to apply factor() to your variable again after subsetting:</p>
+
+<pre><code>&gt; subdf$letters
+[1] a b c
+Levels: a b c d e
+subdf$letters &lt;- factor(subdf$letters)
+&gt; subdf$letters
+[1] a b c
+Levels: a b c
+</code></pre>
+
+<p><strong>EDIT</strong></p>
+
+<p>From the factor page example:</p>
+
+<pre><code>factor(ff)      # drops the levels that do not occur
+</code></pre>
+
+<p>For dropping levels from all factor columns in a dataframe, you can use:</p>
+
+<pre><code>subdf &lt;- subset(df, numbers &lt;= 3)
+subdf[] &lt;- lapply(subdf, function(x) if(is.factor(x)) factor(x) else x)
+</code></pre>
+",2002705,2009-07-28T18:21:47Z,378,Drop factor levels in a subsetted data frame,"<p>I have a data frame containing a factor.  When I create a subset of this data frame using <code>subset()</code> or another indexing function, a new data frame is created.  However, the factor variable retains all of its original levels -- even when they do not exist in the new data frame.</p>
+
+<p>This creates headaches when doing faceted plotting or using functions that rely on factor levels.</p>
+
+<p>What is the most succinct way to remove levels from a factor in my new data frame?</p>
+
+<p>Here's my example:</p>
+
+<pre><code>df &lt;- data.frame(letters=letters[1:5],
+                    numbers=seq(1:5))
+
+levels(df$letters)
+## [1] ""a"" ""b"" ""c"" ""d"" ""e""
+
+subdf &lt;- subset(df, numbers &lt;= 3)
+##   letters numbers
+## 1       a       1
+## 2       b       2
+## 3       c       3    
+
+## but the levels are still there!
+levels(subdf$letters)
+## [1] ""a"" ""b"" ""c"" ""d"" ""e""
+</code></pre>
+"
+1197460,37213,2009-07-29T00:20:11Z,1197434,3,TRUE,"<p>Yes, <a href=""http://cran.r-project.org/doc/manuals/R-data.html"" rel=""nofollow noreferrer"">here's how</a>:</p>
+
+<blockquote>
+  <p>Windows users can use odbcConnectExcel in package RODBC. This can select rows and columns from any of the sheets in an Excel spreadsheet file (at least from Excel 97–2003, depending on your ODBC drivers: by calling odbcConnect directly versions back to Excel 3.0 can be read). The version odbcConnectExcel2007 will read the Excel 2007 formats as well as earlier ones (provided the drivers are installed: see RODBC).</p>
+</blockquote>
+",70702,2009-07-29T00:11:37Z,5,Loading data from Excel file into R or Octave,"<p>I have an Excel file with a large set of data. The built-in graphs available in Excel are <em>not</em> enough to analyze these data, so I am thinking about using some tool like octave or R.</p>
+
+<p>I was thinking about some method to load an Excel file directly into octave or R. I searched the web and found that many people have succeeded using by exporting data from Excel into a CSV file.</p>
+
+<p>The question:
+Is there a direct way to load an Excel file in R or Octave?</p>
+"
+1198147,73568,2009-07-29T05:08:53Z,1198116,2,TRUE,"<p>Once you have set the connection to the file, you can use following statement:</p>
+
+<pre><code>select [columnname] from [sheetname$] where [columnname] = 'somevalue'
+</code></pre>
+
+<p>Not sure about the row index thing. But you can make use of where clause if each row in the file has serial number or any such unique value.</p>
+",70702,2009-07-29T04:57:48Z,3,"sql command for reading a particular sheet, column","<p>This is probably a very stupid question for SQL stalwarts, but I just want one SQL command.</p>
+
+<p>Details,</p>
+
+<p>I am using a data analysis tool called R, this tool uses ODBC to read data from XLS. I am now trying to read data from an XLS file. The ODBC tool in R accepts SQL commands.</p>
+
+<p>Question,</p>
+
+<p>Can someone give me an SQL command that will read data from an XLS file's
+- Specified sheet
+- Specified column [by name]
+- Specified row [Specified just by Row Index]</p>
+
+<p>Thanks ... </p>
+"
+1199155,NA,2009-07-29T09:59:55Z,659725,8,TRUE,"<p>The short answer is that for analytic data, a column store will tend to be faster, with less tuning required.</p>
+
+<p>A row store, the traditional database architecture, is good at inserting small numbers of rows, updating rows in place, and querying small numbers of rows. In a row store, these operations can be done with one or two disk block I/Os.</p>
+
+<p>Analytic databases typically load thousands of records at a time; sometimes, as in your case, they reload everything. They tend to be denormalized, so have a lot of columns. And at query time, they often read a high proportion of the rows in the table, but only a few of these columns. So, it makes sense from an I/O standpoint to store values of the same column together.</p>
+
+<p>Turns out that this gives the database a huge opportunity to do value compression. For instance, if a string column has an average length of 20 bytes but has only 25 distinct values, the database can compress to about 5 bits per value. Column store databases can often operate without decompressing the data.</p>
+
+<p>Often in computer science there is an I/O versus CPU time tradeoff, but in column stores the I/O improvements often improve locality of reference, reduce cache paging activity, and allow greater compression factors, so that CPU gains also.</p>
+
+<p>Column store databases also tend to have other analytic-oriented features like bitmap indexes (yet another case where better organization allows better compression, reduces I/O, and allows algorithms that are more CPU-efficient), partitions, and materialized views.</p>
+
+<p>The other factor is whether to use a massively parallel (MMP) database. There are MMP row-store and column-store databases. MMP databases can scale up to hundreds or thousands of nodes, and allow you to store humungous amounts of data, but sometimes have compromises like a weaker notion of transactions or a not-quite-SQL query language.</p>
+
+<p>I'd recommend that you give LucidDB a try. (Disclaimer: I'm a committer to LucidDB.) It is open-source column store database, optimized for analytic applications, and also has other features such as bitmap indexes. It currently only runs on one node, but utilizes several cores effectively and can handle reasonable volumes of data with not much effort.</p>
+",37751,2009-03-18T19:21:41Z,5,Column Stores: Comparing Column Based Databases,"<p>I've really been struggling to make SQL Server into something that, quite frankly, it will never be. I need a database engine for my analytical work. The DB needs to be fast and does NOT need all the logging and other overhead found in typical databases (SQL Server, Oracle, DB2, etc.) </p>
+
+<p>Yesterday I listened to <a href=""http://itc.conversationsnetwork.org/shows/detail4009.html"" rel=""noreferrer"">Michael Stonebraker speak at the Money:Tech conference</a> and I kept thinking, ""I'm not really crazy. There IS a better way!"" He talks about using <a href=""http://en.wikipedia.org/wiki/Column-oriented_DBMS"" rel=""noreferrer"">column stores</a> instead of row oriented databases. I went to the Wikipedia page for <a href=""http://en.wikipedia.org/wiki/Column-oriented_DBMS"" rel=""noreferrer"">column stores</a> and I see a few open source projects (which I like) and a few commercial/open source projects (which I don't fully understand). </p>
+
+<p>My question is this: In an applied analytical environment, how do the different column based DB's differ? How should I be thinking about them? Anyone have practical experience with multiple column based systems? Can I leverage my SQL experience with these DBs or am I going to have to learn a new language?</p>
+
+<p>I am ultimately going to be pulling data into R for analysis. </p>
+
+<p><strong>EDIT:</strong> I was requested for some clarification in what exactly I am trying to do. So, here's an example of what I would like to do:
+Create a table that has 4 million rows and 20 columns (5 dims, 15 facts). Create 5 aggregation tables that calculate max, min, and average for each of the facts. Join those 5 aggregations back to the starting table. Now calculate the percent deviation from mean, percent deviation of min, and percent deviation from max for each row and add it to the original table. This table data does not get new rows each day, it gets TOTALLY replaced and the process is repeated. Heaven forbid if the process must be stopped. And the logs... ohhhhh the logs! :)</p>
+"
+1203881,143305,2009-07-30T00:46:26Z,1203662,2,TRUE,"<p>I cannot help you with the Java aspect, besides noting that on my Linux machine, simply calling <code>make</code> does the trick:</p>
+
+<pre><code>/tmp/java-new$ make
+javac -d . -source 1.4 -target 1.4 MutableREXP.java REngineException.java REngine.java REXPDouble.java REXPEnvironment.java REXPExpressionVector.java REXPFactor.java REXPGenericVector.java REXPInteger.java REXP.java REXPLanguage.java REXPList.java REXPLogical.java REXPMismatchException.java REXPNull.java REXPRaw.java REXPReference.javaREXPS4.java REXPString.java REXPSymbol.java REXPUnknown.java REXPVector.java RFactor.java RList.java
+jar fc REngine.jar org
+rm -rf org
+javac -d . -cp REngine.jar Rserve/RConnection.java Rserve/RFileInputStream.java Rserve/RFileOutputStream.java Rserve/RserveException.java Rserve/RSession.java Rserve/protocol/jcrypt.java Rserve/protocol/REXPFactory.java Rserve/protocol/RPacket.java Rserve/protocol/RTalk.java
+Note: Rserve/protocol/REXPFactory.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+jar fc Rserve.jar org
+rm -rf org
+</code></pre>
+
+<p>Likewise with the example directory you mentioned -- it builds fine on my Linux machine just saying 'make'.  I do not use Eclipse and can't help with that aspect.</p>
+
+<p>The C++ examples also run fine as well (though I needed to adjust the Makefile to build them).</p>
+
+<p>You may need to ask to the Rosuda list for Rserv.</p>
+",NA,2009-07-29T23:36:11Z,2,How to connect to R with Java (using Eclipse),"<p>Very newbie (to Java) question:</p>
+
+<p>I opened an Rserve connection (<a href=""http://www.rforge.net/Rserve/"" rel=""nofollow noreferrer"">http://www.rforge.net/Rserve/</a>) on localhost, and I would like to use the REngine client (src/client/java-new in the Rserve package) to connect to it.</p>
+
+<p>What do I need to do to get the ""RTest.java"" (located in src/client/java-new/Rserve; pasted below) to compile?</p>
+
+<p>I gather that I need to compile the org.rosuda.* libraries. How can I do this using Eclipse 3.5? I tried copying the ""src/client/java-new"" folder into my Java project's ""src"" directory, right clicking in Eclipse -> Build path -> Use as source folder.  But I don't think this is enough to create the ""org.rosuda"" package, because I don't see an ""org/rosuda"" directory structure created anywhere (and those ominous red lines in Eclipse don't disappear). </p>
+
+<p>Anyone done this recently, care to offer a pointer? Thanks plenty.</p>
+
+<pre><code>import org.rosuda.REngine.*;
+import org.rosuda.REngine.Rserve.*;
+
+class TestException extends Exception {
+    public TestException(String msg) { super(msg); }
+}
+
+public class test {
+    public static void main(String[] args) {
+    try {
+        RConnection c = new RConnection();
+
+        System.out.println(""&gt;&gt;""+c.eval(""R.version$version.string"").asString()+""&lt;&lt;"");
+
+        {
+            System.out.println(""* Test string and list retrieval"");
+            RList l = c.eval(""{d=data.frame(\""huhu\"",c(11:20)); lapply(d,as.character)}"").asList();
+            int cols = l.size();
+            int rows = l.at(0).length();
+            String[][] s = new String[cols][];
+            for (int i=0; i&lt;cols; i++) s[i]=l.at(i).asStrings();
+            System.out.println(""PASSED"");
+        }
+
+        {
+        System.out.println(""* Test NA/NaN support in double vectors..."");
+        double R_NA = Double.longBitsToDouble(0x7ff00000000007a2L);
+        // int R_NA_int = -2147483648; // just for completeness
+        double x[] = { 1.0, 0.5, R_NA, Double.NaN, 3.5 };
+        c.assign(""x"",x);
+        String nas = c.eval(""paste(capture.output(print(x)),collapse='\\n')"").asString();
+        System.out.println(nas);
+        if (!nas.equals(""[1] 1.0 0.5  NA NaN 3.5""))
+            throw new TestException(""NA/NaN assign+retrieve test failed"");
+        System.out.println(""PASSED"");
+        }
+
+        {
+            System.out.println(""* Test assigning of lists and vectors ..."");
+            RList l = new RList();
+            l.put(""a"",new REXPInteger(new int[] { 0,1,2,3}));
+            l.put(""b"",new REXPDouble(new double[] { 0.5,1.2,2.3,3.0}));
+            System.out.println(""  assign x=pairlist"");
+            c.assign(""x"", new REXPList(l));
+            System.out.println(""  assign y=vector"");
+            c.assign(""y"", new REXPGenericVector(l));
+            System.out.println(""  assign z=data.frame"");
+            c.assign(""z"", REXP.createDataFrame(l));
+            System.out.println(""  pull all three back to Java"");
+            REXP x = c.parseAndEval(""x"");
+            System.out.println(""  x = ""+x);
+            x = c.eval(""y"");
+            System.out.println(""  y = ""+x);
+            x = c.eval(""z"");
+            System.out.println(""  z = ""+x);
+            System.out.println(""PASSED"");
+        }
+        {
+            System.out.println(""* Test support for logicals ... "");
+            System.out.println(""  assign b={true,false,true}"");
+            c.assign(""b"", new REXPLogical(new boolean[] { true, false, true }));
+            REXP x = c.parseAndEval(""b"");
+            System.out.println(""  "" + ((x != null) ? x.toDebugString() : ""NULL""));
+            if (!x.isLogical() || x.length() != 3)
+                throw new TestException(""boolean array assign+retrieve test failed"");
+            boolean q[] = ((REXPLogical)x).isTRUE();
+            if (q[0] != true || q[1] != false || q[2] != true)
+                throw new TestException(""boolean array assign+retrieve test failed (value mismatch)"");
+            System.out.println(""  get c(TRUE,FLASE,NA)"");
+            x = c.parseAndEval(""c(TRUE,FALSE,NA)"");
+            System.out.println(""  "" + ((x != null) ? x.toDebugString() : ""NULL""));
+            if (!x.isLogical() || x.length() != 3)
+                throw new TestException(""boolean array NA test failed"");
+            boolean q1[] = ((REXPLogical)x).isTRUE();
+            boolean q2[] = ((REXPLogical)x).isFALSE();
+            boolean q3[] = ((REXPLogical)x).isNA();
+            if (q1[0] != true || q1[1] != false || q1[2] != false ||
+                q2[0] != false || q2[1] != true || q2[2] != false ||
+                q3[0] != false || q3[1] != false || q3[2] != true)
+                throw new TestException(""boolean array NA test failed (value mismatch)"");
+        }
+
+        { // regression: object bit was not set for Java-side generated objects before 0.5-3
+            System.out.println(""* Testing functionality of assembled S3 objects ..."");
+            // we have already assigned the data.frame in previous test, so we jsut re-use it
+            REXP x = c.parseAndEval(""z[2,2]"");
+            System.out.println(""  z[2,2] = "" + x);
+            if (x == null || x.length() != 1 || x.asDouble() != 1.2)
+                throw new TestException(""S3 object bit regression test failed"");
+            System.out.println(""PASSED"");
+        }
+
+        { // this test does a pull and push of a data frame. It will fail when the S3 test above failed.
+            System.out.println(""* Testing pass-though capability for data.frames ..."");
+            REXP df = c.parseAndEval(""{data(iris); iris}"");
+            c.assign(""df"", df);
+            REXP x = c.eval(""identical(df, iris)"");
+            System.out.println(""  identical(df, iris) = ""+x);
+            if (x == null || !x.isLogical() || x.length() != 1 || !((REXPLogical)x).isTrue()[0])
+                throw new TestException(""Pass-through test for a data.frame failed"");
+            System.out.println(""PASSED"");
+        }
+
+            { // factors
+                System.out.println(""* Test support of factors"");
+                REXP f = c.parseAndEval(""factor(paste('F',as.integer(runif(20)*5),sep=''))"");
+                System.out.println(""  f=""+f);
+                System.out.println(""  isFactor: ""+f.isFactor()+"", asFactor: ""+f.asFactor());
+                if (!f.isFactor() || f.asFactor() == null) throw new TestException(""factor test failed"");
+                System.out.println(""  singe-level factor used to degenerate:"");
+                f = c.parseAndEval(""factor('foo')"");
+                System.out.println(""  isFactor: ""+f.isFactor()+"", asFactor: ""+f.asFactor());
+                if (!f.isFactor() || f.asFactor() == null) throw new TestException(""single factor test failed (not a factor)"");
+                if (!f.asFactor().at(0).equals(""foo"")) throw new TestException(""single factor test failed (wrong value)"");
+                System.out.println(""  test factors with null elements contents:"");
+                c.assign(""f"", new REXPFactor(new RFactor(new String[] { ""foo"", ""bar"", ""foo"", ""foo"", null, ""bar"" })));
+                f = c.parseAndEval(""f"");
+                if (!f.isFactor() || f.asFactor() == null) throw new TestException(""factor assign-eval test failed (not a factor)"");
+                System.out.println(""  f = ""+f.asFactor());
+                f = c.parseAndEval(""as.factor(c(1,'a','b',1,'b'))"");
+                System.out.println(""  f = ""+f);
+                if (!f.isFactor() || f.asFactor() == null) throw new TestException(""factor test failed (not a factor)"");
+                System.out.println(""PASSED"");
+            }
+
+
+        {
+            System.out.println(""* Lowess test"");
+            double x[] = c.eval(""rnorm(100)"").asDoubles();
+            double y[] = c.eval(""rnorm(100)"").asDoubles();
+            c.assign(""x"", x);
+            c.assign(""y"", y);
+            RList l = c.parseAndEval(""lowess(x,y)"").asList();
+            System.out.println(""  ""+l);
+            x = l.at(""x"").asDoubles();
+            y = l.at(""y"").asDoubles();
+            System.out.println(""PASSED"");
+        }
+
+        {
+            // multi-line expressions
+            System.out.println(""* Test multi-line expressions"");
+            if (c.eval(""{ a=1:10\nb=11:20\nmean(b-a) }\n"").asInteger()!=10)
+                throw new TestException(""multi-line test failed."");
+            System.out.println(""PASSED"");
+        }
+        {
+            System.out.println(""* Matrix tests\n  matrix: create a matrix"");
+            int m=100, n=100;
+            double[] mat=new double[m*n];
+            int i=0;
+            while (i&lt;m*n) mat[i++]=i/100;
+            System.out.println(""  matrix: assign a matrix"");
+            c.assign(""m"", mat);
+            c.voidEval(""m&lt;-matrix(m,""+m+"",""+n+"")"");
+            System.out.println(""matrix: cross-product"");
+            double[][] mr=c.parseAndEval(""crossprod(m,m)"").asDoubleMatrix();
+            System.out.println(""PASSED"");
+        }
+
+        {
+            System.out.println(""* Test serialization and raw vectors"");
+            byte[] b = c.eval(""serialize(ls, NULL, ascii=FALSE)"").asBytes();
+            System.out.println(""  serialized ls is ""+b.length+"" bytes long"");
+            c.assign(""r"", new REXPRaw(b));
+            String[] s = c.eval(""unserialize(r)()"").asStrings();
+            System.out.println(""  we have ""+s.length+"" items in the workspace"");
+            System.out.println(""PASSED"");
+        }
+
+
+        { // string encoding test (will work with Rserve 0.5-3 and higher only)
+            System.out.println(""* Test string encoding support ..."");
+            String t = ""ひらがな""; // hiragana (literally, in hiragana ;))
+            c.setStringEncoding(""utf8"");
+            // -- Just in case the console is not UTF-8 don't display it
+            //System.out.println(""  unicode text: ""+t);
+            c.assign(""s"", t);
+            REXP x = c.parseAndEval(""nchar(s)"");
+            System.out.println(""  nchar = "" + x);
+            if (x == null || !x.isInteger() || x.asInteger() != 4)
+                throw new TestException(""UTF-8 encoding string length test failed"");
+            // we cannot really test any other encoding ..
+            System.out.println(""PASSED"");
+        }
+
+        } catch (RserveException rse) {
+        System.out.println(rse);
+    } catch (REXPMismatchException mme) {
+        System.out.println(mme);
+        mme.printStackTrace();
+        } catch(TestException te) {
+            System.err.println(""** Test failed: ""+te.getMessage());
+            te.printStackTrace();
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+    }
+}
+</code></pre>
+"
+1214401,16632,2009-07-31T19:25:47Z,1213783,5,TRUE,"<p>Here's one approach:</p>
+
+<pre><code>right &lt;- ~ a + b + c
+left &lt;- ~ y 
+left_2 &lt;- substitute(left ~ ., list(left = left[[2]]))
+
+update(right, left_2)
+</code></pre>
+
+<p>But I think you'll have to either paste text strings together, or use substitute.  To the best of my knowledge, there are no functions to create one two sided formula from two one-sided formulas (or similar equivalents).</p>
+",143383,2009-07-31T17:17:08Z,5,Using function arguments in update.formula,"<p>I am writing a function that takes two variables and separately regresses each of them on a set of controls expressed as a one-sided formula. Right now I'm using the following to make the formula for one of the regressions, but it feels a bit hacked-up:</p>
+
+<pre><code>foo &lt;- function(x, y, controls) {
+    cl &lt;- match.call()
+    xn &lt;- cl[[""x""]]
+    xf &lt;- as.formula(paste(xn, deparse(controls)))
+}
+</code></pre>
+
+<p>I'd prefer to do this using <code>update.formula()</code>, but of course <code>update.formula(controls, x ~ .)</code> and <code>update.formula(controls, as.name(x) ~ .)</code> don't work. What should I be doing?</p>
+"
+1214471,16632,2009-07-31T19:37:52Z,520810,23,TRUE,"<p>No, but you can write it yourself:</p>
+
+<pre><code>q &lt;- function(...) {
+  sapply(match.call()[-1], deparse)
+}
+</code></pre>
+
+<p>And just to show it works:</p>
+
+<pre><code>&gt; q(a, b, c)
+[1] ""a"" ""b"" ""c""
+</code></pre>
+",63372,2009-02-06T15:49:48Z,20,Does R have quote-like operators like Perl's qw()?,"<p>Anyone know if R has quote-like operators like Perl's <code>qw()</code> for generating character vectors? </p>
+"
+1219781,143305,2009-08-02T20:35:28Z,1219480,7,TRUE,"<p>In case you not familiar with R and packages, start with</p>
+
+<pre><code>install.packages(mediation)
+</code></pre>
+
+<p>to download and install the package from CRAN. Then do</p>
+
+<pre><code>library(help=mediation)
+</code></pre>
+
+<p>for a high-level view of the package, and available help files. Then use</p>
+
+<pre><code>library(mediation)
+help(mediate)
+</code></pre>
+
+<p>to load the package and read the help page.  The example can be run via</p>
+
+<pre><code>example(mediate)
+</code></pre>
+
+<p>and you can run the other example for sensitivity analysis via</p>
+
+<pre><code>example(medsens)
+</code></pre>
+",64253,2009-08-02T18:25:39Z,2,Step-by-Step How-to on Mediation Analysis in R,"<p>I'd like to know if anybody can provide a step-by-step how to on how to use mediation analysis using <a href=""http://imai.princeton.edu/software/mediation.html"" rel=""nofollow noreferrer"">Keele, Tingley, Yamamoto and Imai's mediation package</a>. I think there are two approaches to this - <a href=""http://www.public.asu.edu/~davidpm/classes/psy536/Baron.pdf"" rel=""nofollow noreferrer"">the classic Baron and Kenny (1986)</a> and the new one by <a href=""http://kuscholarworks.ku.edu/dspace/bitstream/1808/1658/1/preacher_rucker_hayes_2007.pdf"" rel=""nofollow noreferrer"">Preacher, Rucker and Hayes (2007)</a> - I'd like to know how to do both approaches in R</p>
+"
+1220799,148801,2009-08-03T05:39:57Z,495744,1,TRUE,"<p>So you're given a character vector like <code>c(""08:00-08:15"",08:15-08:30)</code> and you want to convert to an internal R data type for consistency? Check out the help files for POSIXt and strftime.<br>
+How about a function like this:</p>
+
+<pre><code>importTimes &lt;- function(t){
+    t &lt;- strsplit(t,""-"")
+    return(lapply(t,strptime,format=""%H:%M:%S""))
+}
+</code></pre>
+
+<p>This will take a character vector like you described, and return a list of the same length, each element of which is a POSIXt 2-vector giving the start and end times (on today's date). If you want you could add a <code>paste(""1970-01-01"",x)</code> somewhere inside the function to standardize the date you're looking at if it's an issue.<p>
+Does that help at all?</p>
+",12677,2009-01-30T14:48:19Z,2,Operating with time intervals like 08:00-08:15,"<p>I would like to import a time-series where the first field indicates a period:</p>
+
+<pre><code>08:00-08:15
+08:15-08:30
+08:30-08:45
+</code></pre>
+
+<p>Does R have any features to do this neatly?</p>
+
+<p>Thanks!</p>
+
+<hr>
+
+<p><strong>Update:</strong></p>
+
+<p>The most promising solution I found, as suggested by Godeke was the cron package and using substring() to extract the start of the interval.</p>
+
+<p>I'm still working on related issues, so I'll update with the solution when I get there.</p>
+"
+1223948,143305,2009-08-03T18:42:32Z,1223904,1,TRUE,"<p>Start by installing <a href=""http://cran.r-project.org/web/packages/RExcelInstaller/index.html"" rel=""nofollow noreferrer"">RExcelInstaller</a> from <a href=""http://cran.r-project.org"" rel=""nofollow noreferrer"">CRAN</a> via </p>
+
+<pre><code>&gt; install.packages(""RExcelInstaller"")
+</code></pre>
+
+<p>and take it from there.</p>
+",37751,2009-08-03T18:32:05Z,3,Hooking R from within Excel - DCOM? R add in for Excel?,"<p>In the past I have used a DCOM connection to call R functions from Excel and from VBA inside of Excel. I just got a new laptop and have been looking for the install files for the R add in for Excel. I find references to it all over the place but they all point to R (D)COM Server project's home page at <a href=""http://sunsite.univie.ac.at/rcom"" rel=""nofollow noreferrer"">http://sunsite.univie.ac.at/rcom</a>. That URL has been down now for some time. Is there another way to get the same functionality with another method? Is there a new project page? </p>
+
+<p>I've never tried to use the DCOM server without the Excel Add-in. Is that a possibility?</p>
+"
+1233157,143305,2009-08-05T13:09:36Z,1231195,38,TRUE,"<p>This does come up on the mailing list fairly regularly, see <a href=""http://thread.gmane.org/gmane.comp.lang.r.general/156893"" rel=""noreferrer"">for example this recent thread on r-help</a>.  The consensus answer usually is the one shown above: that given that the language has no direct support, you have to either</p>
+
+<ul>
+<li>work with an editor that has region-to-comment commands, and most advanced R editors do </li>
+<li>use the <code>if (FALSE)</code> constructs suggested earlier but note that it still requires complete parsing and must hence be syntactically correct</li>
+</ul>
+",144601,2009-08-05T04:30:49Z,83,Multiline Comment Workarounds?,"<p>I (sort of) already know the answer to this question.  But I figured it is one that gets asked so frequently on the R Users list, that there should be one solid good answer.  <strong>To the best of my knowledge there is no multiline comment functionality in R.  So, does anyone have any good workarounds?</strong></p>
+
+<p>While quite a bit of work in R usually involves interactive sessions (which casts doubt on the need for multiline comments), there are times when I've had to send scripts to colleagues and classmates, much of which involves nontrivial blocks of code.  And for people coming from other languages it is a fairly natural question.  </p>
+
+<p>In the past I've used quotes. Since strings support linebreaks, running an R script with</p>
+
+<pre><code>""
+Here's my multiline comment.
+
+""
+a &lt;- 10
+rocknroll.lm &lt;- lm(blah blah blah)
+ ...
+</code></pre>
+
+<p>works fine.  Does anyone have a better solution?</p>
+"
+1236721,143305,2009-08-06T02:42:29Z,1236620,106,TRUE,"<p>Use one post per main question.</p>
+
+<ol>
+<li><p>As the first answer with assign() showed you, there is a way to assign in the global environment.  A simpler, shorter (but not better ... stick with assign) way is to use the <code>&lt;&lt;-</code> operator, ie   </p>
+
+<pre><code>a &lt;&lt;- ""new"" 
+</code></pre>
+
+<p>inside the function.</p></li>
+<li><p>For your plots, use  <code>main=""My title here""</code>   for each plot.  Use something like <code>par(mar=c(3,3,3,1))</code> to give sufficient spacing.</p></li>
+</ol>
+",70702,2009-08-06T02:03:00Z,77,Global variables in R,"<p>I am a newbie in R programming. Though I am poking into the manuals, I also wanted to ask the community <strong>""How can we set global variables inside a function?""</strong></p>
+
+<p>Any pointers will help.</p>
+
+<p>Question-2: Regarding plotting,</p>
+
+<p>I am using plotting multiple graphs in a single sheet, and to differentiate each one of them, I want to add title for each one of them. Can anyone tell me how I can achieve this?</p>
+"
+1238981,143305,2009-08-06T13:46:20Z,1238933,11,TRUE,"<p>First off, a lot of that 'loops are bad' chatter stems from the dark ages when loops where in fact less efficiently implemented, in particular in some versions of S-Plus. </p>
+
+<p>That said, and while your comment about the need for a large index object is correct, you could also use</p>
+
+<ul>
+<li><p>functions from the <code>apply</code> family such as <code>sapply</code>, <code>lapply</code> or <code>tapply</code> to unroll your structures</p></li>
+<li><p>the relatively new <a href=""http://cran.r-project.org/web/packages/iterators/index.html"" rel=""noreferrer"">iterators</a> package which also avoids the large vector you mentioned as a memory constraint</p></li>
+<li><p>the <a href=""http://www.milbo.users.sonic.net/ra/"" rel=""noreferrer"">Ra 'accelerated R' variant and its jit package</a> which can significantly accelerate simple loops.</p></li>
+</ul>
+
+<p>As added bonus, options one and two give a path towards parallel execution of the loops on suitable systems using tools from the CRAN packages snow, multicore, or NWS just to name a few.</p>
+",23929,2009-08-06T13:35:24Z,6,"Should ""while loops"" be preferred to ""for loops"" for large, necessary loops in R?","<p>Realizing that loops are usually not ideal in R, sometimes they are necessary.</p>
+
+<p>When writing large loops, doesn't </p>
+
+<pre><code>for (i in 1:large_number) 
+</code></pre>
+
+<p>waste memory, since a vector of size large_number must be created?</p>
+
+<p>Would this make while loops the best choice for large, necessary loops?</p>
+"
+1241463,144278,2009-08-06T21:06:43Z,1238250,1,TRUE,"<p>Check out the documentation for that function using <code>?MAP</code>.</p>
+
+<p>If there is nothing there, probably send an email to the author, listed at the package's CRAN page:
+<a href=""http://cran.r-project.org/web/packages/psych/index.html"" rel=""nofollow noreferrer"">CRAN Page for Psych</a></p>
+
+<p>That package is made by the folks at this site. They probably have a mailing list:
+<a href=""http://personality-project.org/r"" rel=""nofollow noreferrer"">PersonalityProject.org</a></p>
+",64253,2009-08-06T11:13:22Z,0,How do you implement Velicer's MAP criterion in R,"<p>I'm looking at the <a href=""http://bm2.genes.nig.ac.jp/RGM2/R_current/library/psych/man/00.psych-package.html"" rel=""nofollow noreferrer"">psych package</a> and the <a href=""http://www.personality-project.org/R/html/VSS.html"" rel=""nofollow noreferrer"">VSS tutorial</a>, do I simply replace VSS with MAP? Like this:</p>
+
+<pre><code>MAP(x, n = 8, rotate = ""varimax"", diagonal = FALSE, fm = ""pa"", n.obs=NULL,plot=TRUE,title=""Very Simple Structure"",...)
+</code></pre>
+
+<p>or is there another way to do this?
+I've doing factor analysis right now and I'm using the elbow method on a scree plot. I'm trying to see if I can try to use Velicer's MAP criterion also</p>
+"
+1241558,37751,2009-08-06T21:20:48Z,1241184,10,TRUE,"<p>The most obvious methods that come to my mind are to use either Lattice or ggplot2. Here's an example using lattice:</p>
+
+<pre><code> library(lattice)
+ depthgroup&lt;-equal.count(quakes$depth, number=3, overlap=0)
+ magnitude&lt;-equal.count(quakes$mag, number=2, overlap=0)
+ xyplot(lat ~ long | depthgroup*magnitude,
+ data=quakes,
+ main=""Fiji Earthquakes"",
+ ylab=""latitude"", xlab=""longitude"",
+ pch=""."",
+ scales=list(x=list(alternating=c(1,1,1))),
+ between=list(y=1),
+ par.strip.text=list(cex=0.7),
+ par.settings=list(axis.text=list(cex=0.7)))
+</code></pre>
+
+<p>In lattice you would change the main= parameter. </p>
+
+<p>The above example was lifted from <a href=""http://osiris.sunderland.ac.uk/~cs0her/Statistics/UsingLatticeGraphicsInR.htm"" rel=""nofollow noreferrer"">here</a>. </p>
+
+<p>I don't have a good ggplot2 example, but there are a metricasston of examples with ggpolot2 over at the <a href=""http://learnr.wordpress.com/"" rel=""nofollow noreferrer"">learn r blog</a>. </p>
+
+<p>One option might be <a href=""http://learnr.wordpress.com/2009/05/18/ggplot2-three-variable-time-series-panel-chart/"" rel=""nofollow noreferrer"">this example</a> where they use ggplot2 and </p>
+
+<pre><code>opts (title = ""RSS and NINO3.4 Temperature Anomalies \nand SATO Index Trends Since 1980"")
+</code></pre>
+
+<p>But you would have to have all three graphs created in gg2plot, naturally.</p>
+
+<p>I think you should be fine with either lattice or ggplot2. </p>
+",144278,2009-08-06T20:23:56Z,6,Overall Title for Plotting Window,"<p>If I create a plotting window in R with m rows and n columns, how can I give the ""overall"" graphic a main title?</p>
+
+<p>For example, I might have three scatterplots showing the relationship between GPA and SAT score for 3 different schools. How could I give one master title to all three plots, such as, ""SAT score vs. GPA for 3 schools in CA""?</p>
+"
+1245337,143305,2009-08-07T15:14:13Z,1245273,50,TRUE,"<p>A histogram is a poor-man's density estimate.  Note that in your call to <code>hist()</code> using default arguments, you get <em>frequencies</em> not probabilities -- add  <code>,prob=TRUE</code> to the call if you want probabilities.  </p>
+
+<p>As for the log axis problem, don't use 'x' if you do not want the x-axis transformed:</p>
+
+<pre><code>plot(mydata_hist$count, log=""y"", type='h', lwd=10, lend=2)
+</code></pre>
+
+<p>gets you bars on a log-y scale -- the look-and-feel is still a little different but can probably be tweaked.</p>
+
+<p>Lastly, you can also do  <code>hist(log(x), ...)</code>  to get a histogram of the log of your data.</p>
+",101927,2009-08-07T15:02:34Z,62,Histogram with Logarithmic Scale and custom breaks,"<p>I'm trying to generate a histogram in R with a logarithmic scale for y. Currently I do:</p>
+
+<pre><code>hist(mydata$V3, breaks=c(0,1,2,3,4,5,25))
+</code></pre>
+
+<p>This gives me a histogram, but the density between 0 to 1 is so great (about a million values difference) that you can barely make out any of the other bars.</p>
+
+<p>Then I've tried doing:</p>
+
+<pre><code>mydata_hist &lt;- hist(mydata$V3, breaks=c(0,1,2,3,4,5,25), plot=FALSE)
+plot(rpd_hist$counts, log=""xy"", pch=20, col=""blue"")
+</code></pre>
+
+<p>It gives me sorta what I want, but the bottom shows me the values 1-6 rather than 0, 1, 2, 3, 4, 5, 25.  It's also showing the data as points rather than bars. <code>barplot</code> works but then I don't get any bottom axis.</p>
+"
+1246489,144642,2009-08-07T19:11:45Z,1246244,6,TRUE,"<p>You want:</p>
+
+<pre><code>normalize &lt;- apply(hist_data, 2, function(x) pnorm(x, mean=mean(x), sd=sd(x)))
+</code></pre>
+
+<p>The problem is that you're passing in the individual column into <code>pnorm</code>, but the entire <code>hist_data</code> into both the mean &amp; the sd.</p>
+
+<p>As I mentioned on twitter, I'm no stats guy so I can't answer anything about what you're actually trying to do :)</p>
+",37751,2009-08-07T18:14:19Z,9,Applying pnorm to columns of a data frame,"<p>I'm trying to normalize some data which I have in a data frame. I want to take each value and run it through the pnorm function along with the mean and standard deviation of the column the value lives in. Using loops, here's how I would write out what I want to do:</p>
+
+<pre><code>#example data
+hist_data &lt;- data.frame( matrix( rnorm( 200,mean=5,sd=.5 ),nrow=20 ) )
+
+n &lt;- dim( hist_data )[2] #columns=10
+k &lt;- dim( hist_data )[1] #rows   =20
+
+#set up the data frame which we will populate with a loop
+normalized &lt;- data.frame( matrix( nrow = nrow( hist_data ), ncol = ncol( hist_data ) ) )
+
+#hot loop in loop action
+for ( i in 1:n ){
+   for ( j in 1:k ){
+      normalized[j,i] &lt;- pnorm( hist_data[j,i], 
+                                mean = mean( hist_data[,i] ), 
+                                sd = sd( hist_data[,i] ) )
+   }  
+}
+normalized
+</code></pre>
+
+<p>It seems that in R there should be a handy dandy vector way of doing this. I thought I was smart so tried using the apply function:</p>
+
+<pre><code>#trouble ahead
+hist_data &lt;- data.frame( matrix( rnorm( 200, mean = 5,sd = .5 ), nrow=10 ) )
+normalized &lt;- apply( hist_data, 2, pnorm, mean = mean( hist_data ), sd = sd( hist_data ) )
+normalized
+</code></pre>
+
+<p>Much to my chagrin, that does NOT produce what I expected. The upper left and bottom right elements of the output are correct, but that's it. So how can I de-loopify my life? </p>
+
+<p>Bonus points if you can tell me what my second code block is actually doing. Kind of a mystery to me still. :)</p>
+"
+1252684,143305,2009-08-10T00:32:48Z,1252546,31,TRUE,"<p>Properly formatted your data looks like this</p>
+
+<pre><code>862 2006-05-19 6.241603 5.774208 
+863 2006-05-20 NA       NA 
+864 2006-05-21 NA       NA 
+865 2006-05-22 6.383929 5.906426 
+866 2006-05-23 6.782068 6.268758 
+867 2006-05-24 6.534616 6.013767 
+868 2006-05-25 6.370312 5.856366 
+869 2006-05-26 6.225175 5.781617 
+870 2006-05-27 NA       NA
+</code></pre>
+
+<p>and is of a time-series nature.  So I would load into an object of class <code>zoo</code> (from the <a href=""http://cran.r-project.org/package=zoo"" rel=""noreferrer""><strong>zoo</strong></a> package) as that allows you to pick a number of strategies -- see below.  Which one you pick depends on the nature of your data and application. In general, the field of 'figuring missing data out' is called <em>data imputation</em>
+and there is a rather large literature.</p>
+
+<pre><code>R&gt; x &lt;- zoo(X[,3:4], order.by=as.Date(X[,2]))
+R&gt; x
+               x     y
+2006-05-19 6.242 5.774
+2006-05-20    NA    NA
+2006-05-21    NA    NA
+2006-05-22 6.384 5.906
+2006-05-23 6.782 6.269
+2006-05-24 6.535 6.014
+2006-05-25 6.370 5.856
+2006-05-26 6.225 5.782
+2006-05-27    NA    NA
+R&gt; na.locf(x)  # last observation carried forward
+               x     y
+2006-05-19 6.242 5.774
+2006-05-20 6.242 5.774
+2006-05-21 6.242 5.774
+2006-05-22 6.384 5.906
+2006-05-23 6.782 6.269
+2006-05-24 6.535 6.014
+2006-05-25 6.370 5.856
+2006-05-26 6.225 5.782
+2006-05-27 6.225 5.782
+R&gt; na.approx(x)  # approximation based on before/after values
+               x     y
+2006-05-19 6.242 5.774
+2006-05-20 6.289 5.818
+2006-05-21 6.336 5.862
+2006-05-22 6.384 5.906
+2006-05-23 6.782 6.269
+2006-05-24 6.535 6.014
+2006-05-25 6.370 5.856
+2006-05-26 6.225 5.782
+R&gt; na.spline(x)   # spline fit ...
+               x     y
+2006-05-19 6.242 5.774
+2006-05-20 5.585 5.159
+2006-05-21 5.797 5.358
+2006-05-22 6.384 5.906
+2006-05-23 6.782 6.269
+2006-05-24 6.535 6.014
+2006-05-25 6.370 5.856
+2006-05-26 6.225 5.782
+2006-05-27 5.973 5.716
+R&gt; 
+</code></pre>
+",153440,2009-08-09T23:00:23Z,16,How to replace NA (missing values) in a data frame with neighbouring values,"<pre><code>862 2006-05-19 6.241603 5.774208     
+863 2006-05-20 NA       NA      
+864 2006-05-21 NA       NA      
+865 2006-05-22 6.383929 5.906426      
+866 2006-05-23 6.782068 6.268758      
+867 2006-05-24 6.534616 6.013767      
+868 2006-05-25 6.370312 5.856366      
+869 2006-05-26 6.225175 5.781617      
+870 2006-05-27 NA       NA     
+</code></pre>
+
+<p>I have a data frame x like above with some NA, which i want to fill using neighboring non-NA values like for 2006-05-20 it will be avg of 19&amp;22 </p>
+
+<p>How do it is the question?</p>
+"
+1256560,143305,2009-08-10T18:50:39Z,1256347,6,TRUE,"<p>Read your data, and convert it  into a <a href=""http://cran.r-project.org/package=zoo"" rel=""nofollow noreferrer""><strong>zoo</strong></a> object:</p>
+
+<pre><code>R&gt; X &lt;- read.csv(""/tmp/so.csv"")
+R&gt; X &lt;- zoo(X$Count, order.by=as.POSIXct(as.character(X[,1])))
+</code></pre>
+
+<p>Note that this will show warnings because of non-unique timestamps.</p>
+
+<p>Task 1 using <code>aggregate</code> with <code>length</code> to count:</p>
+
+<pre><code>R&gt; aggregate(X, force, length)
+2009-07-20 16:30:45 2009-07-20 16:30:46 2009-07-20 16:30:47 
+                  2                   3                   1 
+</code></pre>
+
+<p>Task 2 using <code>aggregate</code>:</p>
+
+<pre><code>R&gt; aggregate(X, force, mean)
+2009-07-20 16:30:45 2009-07-20 16:30:46 2009-07-20 16:30:47 
+             12.500               7.333              20.000 
+</code></pre>
+
+<p>Task 3 can be done the same way by aggregating up to higher-order indices.  You can call <code>plot</code> on the result from aggregate:</p>
+
+<pre><code>plot(aggregate(X, force, mean))
+</code></pre>
+",138470,2009-08-10T18:08:30Z,9,"Plot time data in R to various resolutions (to the minute, to the hour, to the second, etc.)","<p>I have some data in CSV like:</p>
+
+<pre><code>""Timestamp"", ""Count""
+""2009-07-20 16:30:45"", 10
+""2009-07-20 16:30:45"", 15
+""2009-07-20 16:30:46"", 8
+""2009-07-20 16:30:46"", 6
+""2009-07-20 16:30:46"", 8
+""2009-07-20 16:30:47"", 20
+</code></pre>
+
+<p>I can read it into R using read.cvs. I'd like to plot:</p>
+
+<ol>
+<li>Number of entries per second, so:
+
+<pre>
+""2009-07-20 16:30:45"", 2
+""2009-07-20 16:30:46"", 3
+""2009-07-20 16:30:47"", 1
+</pre></li>
+<li>Average value per second:
+
+<pre>
+""2009-07-20 16:30:45"", 12.5
+""2009-07-20 16:30:46"", 7.333
+""2009-07-20 16:30:47"", 20
+</pre></li>
+<li>Same as 1 &amp; 2 but then by Minute and then by Hour.</li>
+</ol>
+
+<p>Is there some way to do this (collect by second/min/etc &amp; plot) in R? </p>
+"
+1259268,142651,2009-08-11T09:21:18Z,1233948,4,TRUE,"<p>The alpha levels are hardcoded and fixed at 0.99 If you want to change that, then you have to download the package source, change the levels and compile the package. The levels are coded in the Methods.R file. Search for binom.test or conf.level</p>
+
+<p>You could ask the package author to change the package so you can set the level yourself. But bear in mind that the package author is not obliged to do that!</p>
+",112882,2009-08-05T15:18:21Z,0,How to set alpha in R?,"<p>I have <a href=""http://rss.acs.unt.edu/Rdoc/library/coin/html/LocationTests.html"" rel=""nofollow noreferrer"">this example</a> from the coin package of R:</p>
+
+<pre><code>  library(coin)
+  library(multcomp)
+  ### Length of YOY Gizzard Shad from Kokosing Lake, Ohio,
+  ### sampled in Summer 1984, Hollander &amp; Wolfe (1999), Table 6.3, page 200
+  YOY &lt;- data.frame(length = c(46, 28, 46, 37, 32, 41, 42, 45, 38, 44, 
+                               42, 60, 32, 42, 45, 58, 27, 51, 42, 52, 
+                               38, 33, 26, 25, 28, 28, 26, 27, 27, 27, 
+                               31, 30, 27, 29, 30, 25, 25, 24, 27, 30),
+                    site = factor(c(rep(""I"", 10), rep(""II"", 10),
+                                    rep(""III"", 10), rep(""IV"", 10))))
+
+  ### Nemenyi-Damico-Wolfe-Dunn test (joint ranking)
+  ### Hollander &amp; Wolfe (1999), page 244 
+  ### (where Steel-Dwass results are given)
+  NDWD &lt;- oneway_test(length ~ site, data = YOY,
+      ytrafo = function(data) trafo(data, numeric_trafo = rank),
+      xtrafo = function(data) trafo(data, factor_trafo = function(x)
+          model.matrix(~x - 1) %*% t(contrMat(table(x), ""Tukey""))),
+      teststat = ""max"", distribution = approximate(B = 90000))
+
+  ### global p-value
+  print(pvalue(NDWD))
+
+  ### sites (I = II) != (III = IV) at alpha = 0.01 (page 244)
+  print(pvalue(NDWD, method = ""single-step""))
+</code></pre>
+
+<p>I want to assign alpha a different value, how can I do this??</p>
+
+<p>This doesn't work!</p>
+
+<pre><code>  library(coin)
+  library(multcomp)
+  ### Length of YOY Gizzard Shad from Kokosing Lake, Ohio,
+  ### sampled in Summer 1984, Hollander &amp; Wolfe (1999), Table 6.3, page 200
+  YOY &lt;- data.frame(length = c(46, 28, 46, 37, 32, 41, 42, 45, 38, 44, 
+                               42, 60, 32, 42, 45, 58, 27, 51, 42, 52, 
+                               38, 33, 26, 25, 28, 28, 26, 27, 27, 27, 
+                               31, 30, 27, 29, 30, 25, 25, 24, 27, 30),
+                    site = factor(c(rep(""I"", 10), rep(""II"", 10),
+                                    rep(""III"", 10), rep(""IV"", 10))))
+
+  ### Nemenyi-Damico-Wolfe-Dunn test (joint ranking)
+  ### Hollander &amp; Wolfe (1999), page 244 
+  ### (where Steel-Dwass results are given)
+  NDWD &lt;- oneway_test(length ~ site, data = YOY,
+      ytrafo = function(data) trafo(data, numeric_trafo = rank),
+      xtrafo = function(data) trafo(data, factor_trafo = function(x)
+          model.matrix(~x - 1) %*% t(contrMat(table(x), ""Tukey""))),
+      teststat = ""max"", distribution = approximate(B = 90000),
+      alpha = 0.05)
+
+  ### global p-value
+  print(pvalue(NDWD))
+
+  ### sites (I = II) != (III = IV) at alpha = 0.05 (default was 0.01) (page 244)
+  print(pvalue(NDWD, method = ""single-step""))
+</code></pre>
+"
+1260696,142651,2009-08-11T14:22:44Z,1259867,3,TRUE,"<p>Here is a solution using the plyr package.</p>
+
+<pre><code>myDataFrame &lt;- data.frame(myData=runif(15),myFactor=rep(c(""A"",""B"",""C""),5))
+library(plyr)
+ddply(myDataFrame, ""myFactor"", function(x){
+    x$Median &lt;- median(x$myData)
+    x$FactorLevelMedianSplit &lt;- factor(x$myData &lt;= x$Median, levels = c(TRUE, FALSE), labels = c(""Below"", ""Above""))
+    x
+})
+</code></pre>
+",23929,2009-08-11T11:45:35Z,8,How to do median splits within factor levels in R?,"<p>Here I make a new column to indicate whether myData is above or below its median</p>
+
+<pre><code>### MedianSplits based on Whole Data
+#create some test data
+myDataFrame=data.frame(myData=runif(15),myFactor=rep(c(""A"",""B"",""C""),5)) 
+
+#create column showing median split
+myBreaks= quantile(myDataFrame$myData,c(0,.5,1))
+myDataFrame$MedianSplitWholeData = cut(
+    myDataFrame$myData,
+    breaks=myBreaks, 
+    include.lowest=TRUE,
+    labels=c(""Below"",""Above""))
+
+#Check if it's correct
+myDataFrame$AboveWholeMedian = myDataFrame$myData &gt; median(myDataFrame$myData)
+myDataFrame
+</code></pre>
+
+<p>Works fine. Now I want to do the same thing, but compute the median splits within each level of myFactor.</p>
+
+<p>I've come up with this:</p>
+
+<pre><code>#Median splits within factor levels
+byOutput=by(myDataFrame$myData,myDataFrame$myFactor, function (x) {
+     myBreaks= quantile(x,c(0,.5,1))
+     MedianSplitByGroup=cut(x,
+       breaks=myBreaks, 
+       include.lowest=TRUE,
+       labels=c(""Below"",""Above""))
+     MedianSplitByGroup
+     })
+</code></pre>
+
+<p>byOutput contains what I want. It categorizes each element of factors A, B, and C correctly. However I'd like to create a new column, myDataFrame$FactorLevelMedianSplit, that shows the newly-computed median split.</p>
+
+<p>How do you convert the output of the ""by"" command into a useful data-frame column?</p>
+
+<p>I think perhaps the ""by"" command is not R-like way to do this ... </p>
+
+<p><strong>Update</strong>:</p>
+
+<p>With Thierry's example of how to use factor() cleverly, and upon discovering the ""ave"" function in Spector's book, I've found this solution, which requires no additional packages.</p>
+
+<pre><code>myDataFrame$MediansByFactor=ave(
+    myDataFrame$myData,
+    myDataFrame$myFactor,
+    FUN=median)
+
+myDataFrame$FactorLevelMedianSplit = factor(
+    myDataFrame$myData&gt;myDataFrame$MediansByFactor, 
+    levels = c(TRUE, FALSE), 
+    labels = c(""Above"", ""Below""))
+</code></pre>
+"
+1261288,143377,2009-08-11T15:54:00Z,1260965,59,TRUE,"<p>The following code has served me well. Customize it a little and you are done.
+<a href=""http://files.eduardoleoni.com/map.png"">alt text http://files.eduardoleoni.com/map.png</a></p>
+
+<pre><code>library(maptools)
+substitute your shapefiles here
+state.map &lt;- readShapeSpatial(""BRASIL.shp"")
+counties.map &lt;- readShapeSpatial(""55mu2500gsd.shp"")
+## this is the variable we will be plotting
+counties.map@data$noise &lt;- rnorm(nrow(counties.map@data))
+</code></pre>
+
+<p>heatmap function</p>
+
+<pre><code>plot.heat &lt;- function(counties.map,state.map,z,title=NULL,breaks=NULL,reverse=FALSE,cex.legend=1,bw=.2,col.vec=NULL,plot.legend=TRUE) {
+  ##Break down the value variable
+  if (is.null(breaks)) {
+    breaks=
+      seq(
+          floor(min(counties.map@data[,z],na.rm=TRUE)*10)/10
+          ,
+          ceiling(max(counties.map@data[,z],na.rm=TRUE)*10)/10
+          ,.1)
+  }
+  counties.map@data$zCat &lt;- cut(counties.map@data[,z],breaks,include.lowest=TRUE)
+  cutpoints &lt;- levels(counties.map@data$zCat)
+  if (is.null(col.vec)) col.vec &lt;- heat.colors(length(levels(counties.map@data$zCat)))
+  if (reverse) {
+    cutpointsColors &lt;- rev(col.vec)
+  } else {
+    cutpointsColors &lt;- col.vec
+  }
+  levels(counties.map@data$zCat) &lt;- cutpointsColors
+  plot(counties.map,border=gray(.8), lwd=bw,axes = FALSE, las = 1,col=as.character(counties.map@data$zCat))
+  if (!is.null(state.map)) {
+    plot(state.map,add=TRUE,lwd=1)
+  }
+  ##with(counties.map.c,text(x,y,name,cex=0.75))
+  if (plot.legend) legend(""bottomleft"", cutpoints, fill = cutpointsColors,bty=""n"",title=title,cex=cex.legend)
+  ##title(""Cartogram"")
+}
+</code></pre>
+
+<p>plot it</p>
+
+<pre><code>plot.heat(counties.map,state.map,z=""noise"",breaks=c(-Inf,-2,-1,0,1,2,Inf))
+</code></pre>
+",37751,2009-08-11T15:06:53Z,58,Developing Geographic Thematic Maps with R,"<p>There are clearly a number of packages in R for all sorts of spatial analysis. That can by seen in the <a href=""http://cran.r-project.org/web/views/Spatial.html"" rel=""noreferrer"">CRAN Task View: Analysis of Spatial Data</a>. These packages are numerous and diverse, but all I want to do is some simple <a href=""http://images.google.com/images?q=thematic+map&amp;oe=utf-8&amp;rls=org.mozilla:en-US:official&amp;client=firefox-a&amp;um=1&amp;ie=UTF-8&amp;ei=EYiBSqywF5TYNZW8sJ0L&amp;sa=X&amp;oi=image_result_group&amp;ct=title&amp;resnum=4"" rel=""noreferrer"">thematic maps</a>. I have data with county and state FIPS codes and I have ESRI shape files of county and state boundaries and the accompanying FIPS codes which allows joining with the data. The shape files could be easily converted to other formats, if needed. </p>
+
+<p>So what's the most straight forward way to create thematic maps with R? </p>
+
+<p>This map looks like it was created with an ESRI Arc product, but this is the type of thing I would like to do with R:</p>
+
+<p><a href=""http://www.infousagov.com/images/choro.jpg"" rel=""noreferrer"">alt text http://www.infousagov.com/images/choro.jpg</a> Map <a href=""http://www.infousagov.com/thematicmap.asp"" rel=""noreferrer"">copied from here</a>. </p>
+"
+1263432,154039,2009-08-11T22:56:40Z,1107605,1,TRUE,"<p>There isn't, but you can force your Rscript into R editing mode by making the second line of the file look like this:</p>
+
+<pre><code># -*- mode: R -*-
+</code></pre>
+
+<p>(More information <a href=""http://www.gnu.org/software/emacs/manual/html_node/emacs/Specifying-File-Variables.html"" rel=""nofollow noreferrer"">here</a>.)</p>
+",60628,2009-07-10T03:55:08Z,6,Is there an Emacs mode for Rscript?,"<p>Is there any usable emacs mode for <code>Rscript</code>? </p>
+
+<p>(<code>Rscript</code> is the script front-end for the <a href=""http://www.r-project.org/"" rel=""nofollow noreferrer"">R</a> language.)</p>
+
+<p>If I type this:</p>
+
+<pre><code>#!/usr/bin/Rscript
+print(commandArgs(TRUE))
+</code></pre>
+
+<p>and do <code>indent</code> in the <a href=""http://ess.r-project.org/"" rel=""nofollow noreferrer"">ESS</a> R-mode it indents the first line like crazy, since it sees it as a comment:</p>
+
+<pre><code>                          #!/usr/bin/Rscript
+print(commandArgs(TRUE))
+</code></pre>
+"
+1265157,23929,2009-08-12T09:27:23Z,1265129,19,TRUE,"<p>The dput command writes an ASCII representation. If instead of a filename you put """" it will write it to the console</p>
+
+<pre><code>&gt; dput(site.data,"""")
+structure(list(site = structure(c(1L, 1L, 1L, 2L, 2L, 2L, 3L, 
+3L, 3L), .Label = c(""ALBEN"", ""ALDER"", ""AMERI""), class = ""factor""), 
+    year = c(5L, 10L, 20L, 5L, 10L, 20L, 5L, 10L, 20L), peak = c(101529.6, 
+    117483.4, 132960.9, 6561.3, 7897.1, 9208.1, 43656.5, 51475.3, 
+    58854.4)), .Names = c(""site"", ""year"", ""peak""), row.names = c(1L, 
+2L, 3L, 8L, 9L, 10L, 15L, 16L, 17L), class = ""data.frame"")
+</code></pre>
+
+<p>Just copy the structure and put it after ""site.data="" in your example code and people will be able to recreate the data frame exactly as you have it.</p>
+",23929,2009-08-12T09:22:08Z,13,How to export the definition of an R object to plain text so that others can recreate it?,"<p>Let's say you have this data in R, and you want to post a question on stackoverflow. For others to best help you, it would be nice if they could have a copy of your object (dataframe, vector, etc) to work with.</p>
+
+<p>Let's say your data is in a data frame called site.data</p>
+
+<pre><code>&gt; site.data
+    site year     peak
+1  ALBEN    5 101529.6
+2  ALBEN   10 117483.4
+3  ALBEN   20 132960.9
+8  ALDER    5   6561.3
+9  ALDER   10   7897.1
+10 ALDER   20   9208.1
+15 AMERI    5  43656.5
+16 AMERI   10  51475.3
+17 AMERI   20  58854.4
+</code></pre>
+
+<p>How do you package it up so that the users can recreate the data exactly as you have it? </p>
+
+<p>You want to do this without having people download a text file and import it.  </p>
+
+<p>(Note: These data subsetted from an example of the REvolutions blog)</p>
+"
+1266400,143305,2009-08-12T14:09:44Z,1266279,60,TRUE,"<p>The standard answer is to use packages -- see the <a href=""http://cran.r-project.org/doc/manuals/R-exts.pdf"" rel=""nofollow noreferrer"">Writing R Extensions</a> manual as well as different tutorials on the web.</p>
+
+<p>It gives you</p>
+
+<ul>
+<li>a quasi-automatic way to organize your code by topic </li>
+<li>strongly encourages you to write a help file, making you think about the interface</li>
+<li>a lot of sanity checks via <code>R CMD check</code></li>
+<li>a chance to add regression tests</li>
+<li>as well as a means for namespaces.</li>
+</ul>
+
+<p>Just running <code>source()</code> over code works for really short snippets. Everything else should be in a package -- even if you do not plan to publish it as you can write internal packages for internal repositories. </p>
+
+<p>As for the 'how to edit' part, the <a href=""http://cran.r-project.org/doc/manuals/R-ints.html"" rel=""nofollow noreferrer"">R Internals</a> manual has excellent <em>R coding standards</em> in Section 6.  Otherwise, I tend to use defaults in <a href=""http://ess.r-project.org/"" rel=""nofollow noreferrer"">Emacs' ESS mode</a>.</p>
+
+<p><em>Update 2008-Aug-13:</em>  David Smith just blogged about the <a href=""https://google.github.io/styleguide/Rguide.xml"" rel=""nofollow noreferrer"">Google R Style Guide</a>.</p>
+",23929,2009-08-12T13:50:45Z,138,How to organize large R programs?,"<p>When I undertake an R project of any complexity, my scripts quickly get long and confusing. </p>
+
+<p>What are some practices I can adopt so that my code will always be a pleasure to work with? I'm thinking about things like</p>
+
+<ul>
+<li>Placement of functions in source files</li>
+<li>When to break something out to another source file</li>
+<li>What should be in the master file</li>
+<li>Using functions as organizational units (whether this is worthwhile given that R makes it hard to access global state)</li>
+<li>Indentation / line break practices. 
+
+<ul>
+<li>Treat ( like {? </li>
+<li>Put things like )} on 1 or 2 lines?</li>
+</ul></li>
+</ul>
+
+<p>Basically, what are your rules of thumb for organizing large R scripts?</p>
+"
+1269719,143319,2009-08-13T02:23:36Z,1269624,100,TRUE,"<pre><code>x[r,]
+</code></pre>
+
+<p>where r is the row you're interested in.  Try this, for example:</p>
+
+<pre><code>#Add your data
+x &lt;- structure(list(A = c(5,    3.5, 3.25, 4.25,  1.5 ), 
+                    B = c(4.25, 4,   4,    4.5,   4.5 ),
+                    C = c(4.5,  2.5, 4,    2.25,  3   )
+               ),
+               .Names    = c(""A"", ""B"", ""C""),
+               class     = ""data.frame"",
+               row.names = c(NA, -5L)
+     )
+
+#The vector your result should match
+y&lt;-c(A=5, B=4.25, C=4.5)
+
+#Test that the items in the row match the vector you wanted
+x[1,]==y
+</code></pre>
+
+<p><a href=""http://www.mayin.org/ajayshah/KB/R/html/b6.html"" rel=""noreferrer"">This page</a> (from <a href=""http://www.mayin.org/ajayshah/KB/R/index.html"" rel=""noreferrer"">this useful site</a>) has good information on indexing like this.</p>
+",32978,2009-08-13T01:44:56Z,76,How to get row from R data.frame,"<p>I have a data.frame with column headers. </p>
+
+<p>How can I get a specific row from the data.frame as a list (with the column headers as keys for the list)?</p>
+
+<p>Specifically, my data.frame is </p>
+
+<pre>
+      A    B    C
+    1 5    4.25 4.5
+    2 3.5  4    2.5
+    3 3.25 4    4
+    4 4.25 4.5  2.25
+    5 1.5  4.5  3
+</pre>
+
+<p>And I want to get a row that's the equivalent of</p>
+
+<pre><code>&gt; c(a=5, b=4.25, c=4.5)
+  a   b   c 
+5.0 4.25 4.5 
+</code></pre>
+"
+1272819,154039,2009-08-13T15:45:04Z,1169373,19,TRUE,"<p>Memory for deleted objects is not released immediately. R uses a technique called ""garbage collection"" to reclaim memory for deleted objects. Periodically, it cycles through the list of accessible objects (basically, those that have names and have not been deleted and can therefore be accessed by the user), and ""tags"" them for retention. The memory for any untagged objects is returned to the operating system after the garbage-collection sweep.</p>
+
+<p>Garbage collection happens automatically, and you don't have any direct control over this process. But you can force a sweep by calling the command gc() from the command line.</p>
+
+<p>Even then, on some operating systems garbage collection might not reclaim memory (as reported by the OS). Older versions of Windows, for example, could increase but not decrease the memory footprint of R. Garbage collection would only make space for new objects in the future, but would not reduce the memory use of R.</p>
+",84458,2009-07-23T03:03:09Z,24,Memory Usage in R,"<p>After creating large objects and running out of RAM, I will try and delete the objects in my current environment using</p>
+
+<pre><code>rm(list=ls())
+</code></pre>
+
+<p>When I check my RAM usage, nothing has changed.  Even after calling <code>gc()</code> nothing has changed.  I can only replenish my RAM by quitting R.</p>
+
+<p>Anybody have advice for dealing with memory-intensive objects within R?</p>
+"
+1279136,2611,2009-08-14T17:34:36Z,1279003,6,TRUE,"<p>I usually set this at the start of my session with <code>windows.options</code>:</p>
+
+<pre><code>windows.options(width=10, height=10)
+
+# plot away
+plot(...)
+</code></pre>
+
+<p>If you need to reset to ""factory settings"":</p>
+
+<pre><code>dev.off()
+windows.options(reset=TRUE)
+
+# more plotting
+plot(...)
+</code></pre>
+",144278,2009-08-14T17:06:15Z,13,Specify Width and Height of Plot,"<p>I have a panel containing three plots. How can I use <code>par</code> to specify the width and height of the main panel so it is always at a fixed size?</p>
+"
+1296745,143305,2009-08-18T21:51:22Z,1296646,1260,TRUE,"<p>You can use the <a href=""http://stat.ethz.ch/R-manual/R-devel/library/base/html/order.html"" rel=""noreferrer""><code>order()</code></a> function directly without resorting to add-on tools -- see this simpler answer which uses a trick right from the top of the <code>example(order)</code> code:</p>
+
+<pre><code>R&gt; dd[with(dd, order(-z, b)), ]
+    b x y z
+4 Low C 9 2
+2 Med D 3 1
+1  Hi A 8 1
+3  Hi A 9 1
+</code></pre>
+
+<p><em>Edit some 2+ years later:</em>  It was just asked how to do this by column index. The answer is to simply pass the desired sorting column(s) to the <code>order()</code> function:</p>
+
+<pre><code>R&gt; dd[ order(-dd[,4], dd[,1]), ]
+    b x y z
+4 Low C 9 2
+2 Med D 3 1
+1  Hi A 8 1
+3  Hi A 9 1
+R&gt; 
+</code></pre>
+
+<p>rather than using the name of the column (and <code>with()</code> for easier/more direct access).</p>
+",84458,2009-08-18T21:33:18Z,956,How to sort a dataframe by column(s)?,"<p>I want to sort a data.frame by multiple columns. For example, with the data.frame below I would like to sort by column <code>z</code> (descending) then by column <code>b</code> (ascending): </p>
+
+<pre><code>dd &lt;- data.frame(b = factor(c(""Hi"", ""Med"", ""Hi"", ""Low""), 
+      levels = c(""Low"", ""Med"", ""Hi""), ordered = TRUE),
+      x = c(""A"", ""D"", ""A"", ""C""), y = c(8, 3, 9, 9),
+      z = c(1, 1, 1, 2))
+dd
+    b x y z
+1  Hi A 8 1
+2 Med D 3 1
+3  Hi A 9 1
+4 Low C 9 2
+</code></pre>
+"
+1299539,16632,2009-08-19T12:14:46Z,1297698,6,TRUE,"<p>Instead of using <code>lmList</code>, I'd recommend the more general plyr package.  </p>
+
+<pre><code>library(plyr)
+
+d &lt;- data.frame(
+ state = rep(c('NY', 'CA'), c(10, 10)), 
+ year = rep(1:10, 2), 
+ response = c(rnorm(10), rnorm(10))
+)
+
+# Create a list of models
+# dlply = data frame -&gt; list
+models &lt;- dlply(d, ~ state, function(df) { 
+  lm(response ~ year, data = df)
+})
+
+# Extract the coefficients in a useful form
+# ldply = list -&gt; data frame
+ldply(models, coef)
+
+# We can get the predictions in a similar way, but we need
+# to cast to a data frame so the numbers come out as rows,
+# not columns.
+predictions &lt;- ldply(models, as.data.frame(predict))
+</code></pre>
+
+<p><code>predictions</code> is a regular R data frame and so is easy to plot.</p>
+",37751,2009-08-19T03:35:02Z,2,Plotting Regression results from lme4 in R using Lattice (or something else),"<p>I have fit a regression using lme4 thanks to a <a href=""https://stackoverflow.com/questions/1169539/linear-regression-and-group-by-in-r"">previous answer</a>. Now that I have a regression fit for each state I'd like to use lattice to plot QQ plots for each state. I would also like to plot error plots for each state in a lattice format. How do I make a lattice plot using the results of a lme4 regression? </p>
+
+<p>Below is a simple sample (yeah, I like a good alliteration) using two states. I would like to make a two panel lattice made from the object fits. </p>
+
+<pre><code>library(lme4)
+d &lt;- data.frame(state=rep(c('NY', 'CA'), c(10, 10)), year=rep(1:10, 2), response=c(rnorm(10), rnorm(10)))
+fits &lt;- lmList(response ~ year | state, data=d)
+</code></pre>
+"
+1300618,143319,2009-08-19T15:15:41Z,1299871,847,TRUE,"<p>By using the <code>merge</code> function and its optional parameters:</p>
+
+<p><strong><em>Inner join:</em></strong> <code>merge(df1, df2)</code> will work for these examples because R automatically joins the frames by common variable names, but you would most likely want to specify <code>merge(df1, df2, by = ""CustomerId"")</code> to make sure that you were matching on only the fields you desired.  You can also use the <code>by.x</code> and <code>by.y</code> parameters if the matching variables have different names in the different data frames.</p>
+
+<p><strong><em>Outer join:</em></strong> <code>merge(x = df1, y = df2, by = ""CustomerId"", all = TRUE)</code></p>
+
+<p><strong><em>Left outer:</em></strong> <code>merge(x = df1, y = df2, by = ""CustomerId"", all.x = TRUE)</code></p>
+
+<p><strong><em>Right outer:</em></strong> <code>merge(x = df1, y = df2, by = ""CustomerId"", all.y = TRUE)</code></p>
+
+<p><strong><em>Cross join:</em></strong> <code>merge(x = df1, y = df2, by = NULL)</code></p>
+
+<p><strike>Just as with the inner join, you would probably want to explicitly pass ""CustomerId"" to R as the matching variable.</strike>  I think it's almost always best to explicitly state the identifiers on which you want to merge; it's safer if the input data.frames change unexpectedly and easier to read later on.</p>
+",23929,2009-08-19T13:18:11Z,771,"How to join (merge) data frames (inner, outer, left, right)?","<p>Given two data frames:</p>
+
+<pre><code>df1 = data.frame(CustomerId = c(1:6), Product = c(rep(""Toaster"", 3), rep(""Radio"", 3)))
+df2 = data.frame(CustomerId = c(2, 4, 6), State = c(rep(""Alabama"", 2), rep(""Ohio"", 1)))
+
+df1
+#  CustomerId Product
+#           1 Toaster
+#           2 Toaster
+#           3 Toaster
+#           4   Radio
+#           5   Radio
+#           6   Radio
+
+df2
+#  CustomerId   State
+#           2 Alabama
+#           4 Alabama
+#           6    Ohio
+</code></pre>
+
+<p>How can I do database style, i.e., <a href=""http://en.wikipedia.org/wiki/Join_%28SQL%29"" rel=""noreferrer"">sql style, joins</a>? That is, how do I get:</p>
+
+<ul>
+<li>An <a href=""http://en.wikipedia.org/wiki/Join_%28SQL%29#Inner_join"" rel=""noreferrer"">inner join</a> of <code>df1</code> and <code>df2</code>:<br>
+Return only the rows in which the left table have matching keys in the right table.</li>
+<li>An <a href=""http://en.wikipedia.org/wiki/Join_%28SQL%29#Outer_join"" rel=""noreferrer"">outer join</a> of <code>df1</code> and <code>df2</code>:<br>
+Returns all rows from both tables, join records from the left which have matching keys in the right table.</li>
+<li>A <a href=""http://en.wikipedia.org/wiki/Join_%28SQL%29#Left_outer_join"" rel=""noreferrer"">left outer join (or simply left join)</a> of <code>df1</code> and <code>df2</code><br>
+Return all rows from the left table, and any rows with matching keys from the right table.</li>
+<li>A <a href=""http://en.wikipedia.org/wiki/Join_%28SQL%29#Right_outer_join"" rel=""noreferrer"">right outer join</a> of <code>df1</code> and <code>df2</code><br>
+Return all rows from the right table, and any rows with matching keys from the left table.</li>
+</ul>
+
+<p>Extra credit:</p>
+
+<p>How can I do a SQL style select statement?</p>
+"
+1300949,143305,2009-08-19T16:00:11Z,1300575,6,TRUE,"<p>You can use <code>model.matrix()</code> and <code>model.frame()</code> to evaluate the formula:</p>
+
+<pre><code>lm1 &lt;- lm(log(Volume) ~ log(Girth) + log(Height), data=trees)
+print(lm1)
+
+form &lt;- log(Volume) ~ log(Girth) + log(Height)
+
+# use model.matrix
+mm &lt;- model.matrix(form, trees)
+lm2 &lt;- lm.fit(as.matrix(mm), log(trees[,""Volume""]))
+print(coefficients(lm2))
+
+# use model.frame, need to add intercept by hand
+mf &lt;- model.frame(form, trees)
+lm3 &lt;- lm.fit(as.matrix(data.frame(""Intercept""=1, mf[,-1])), mf[,1])
+print(coefficients(lm3))
+</code></pre>
+
+<p>which yields </p>
+
+<pre><code>Call: lm(formula = log(Volume) ~ log(Girth) + log(Height), data = trees)
+
+Coefficients: (Intercept)   log(Girth) log(Height)
+      -6.63         1.98         1.12
+
+(Intercept)  log(Girth) log(Height)
+     -6.632       1.983       1.117  
+Intercept  log.Girth. log.Height.
+     -6.632       1.983       1.117
+</code></pre>
+",143813,2009-08-19T15:09:30Z,10,Formulas in user-defined functions in R,"<p>Formulas are a very useful feature of R's statistical and graphical functions. Like everyone, I am a user of these functions. However, I have never written a function that takes a formula object as an argument. I was wondering if someone could help me, by either linking to a readable introduction to this side of R programming, or by giving a self-contained example.</p>
+"
+1302334,143377,2009-08-19T20:05:46Z,1301759,3,TRUE,"<p>There are several ways to do this (it is R, after all) but I think the most clear is creating an index. We need a function that creates a sequential index (starting at one and ending with the number of observations).</p>
+
+<pre><code>seq_len(3) 
+&gt; [1] 1 2 3
+</code></pre>
+
+<p>But we need to calculate this index within each grouping variable (state). For this we can use R's <code>ave</code> function. It takes a numeric as the first argument, then the grouping factors, and finally the function to be applied in each group. </p>
+
+<pre><code>s1$index &lt;- with(s1,ave(value1,state,FUN=seq_len))
+s2$index &lt;- with(s2,ave(value2,state,FUN=seq_len))
+</code></pre>
+
+<p>(Note the use of <code>with</code>, which tells R to search for the variables within the environment/dataframe. This is better practice than using s1$value1, s2$value2, etc.)</p>
+
+<p>Now we can simply merge (join) the two data frames (by the variables present in the both data frames:  state and index). </p>
+
+<pre><code>merge(s1,s2)
+</code></pre>
+
+<p>which gives</p>
+
+<pre><code>   state index value1 value2
+1    IA     1      1      6
+2    IA     2      2      7
+3    IA     3      3      8
+4    IL     1      4      3
+5    IL     2      5      4
+6    IL     3      6      5
+</code></pre>
+
+<p>For this to work, there should be the same number of observations by state in each of the data frames.</p>
+
+<p>[Edit: commented the code for clarity.]
+[Edit: Used seq_len instead of creating a new function as suggested by hadley.]</p>
+",37751,2009-08-19T18:24:23Z,4,Mixed Merge in R - Subscript solution?,"<p><strong>Note:</strong> <em>I changed the example from when I first posted. My first example was too simplified to capture the real problem.</em> </p>
+
+<p>I have two data frames which are sorted differently in one column. I want to match one column and then merge in the value from the second column. The second column needs to stay in the same order. </p>
+
+<p>So I have this:</p>
+
+<pre><code>state&lt;-c(""IA"",""IA"",""IA"",""IL"",""IL"",""IL"")
+value1&lt;-c(1,2,3,4,5,6)
+s1&lt;-data.frame(state,value1)
+state&lt;-c(""IL"",""IL"",""IL"",""IA"",""IA"",""IA"")
+value2&lt;-c(3,4,5,6,7,8)
+s2&lt;-data.frame(state,value2)
+
+s1
+s2
+</code></pre>
+
+<p>which returns this:</p>
+
+<pre><code>&gt; s1
+  state value1
+1    IA      1
+2    IA      2
+3    IA      3
+4    IL      4
+5    IL      5
+6    IL      6
+&gt; s2
+  state value2
+1    IL      3
+2    IL      4
+3    IL      5
+4    IA      6
+5    IA      7
+6    IA      8
+</code></pre>
+
+<p>and I want this:</p>
+
+<pre><code>  state value1 value2
+1    IA      1      6
+2    IA      2      7
+3    IA      3      8
+4    IL      4      3
+5    IL      5      4
+6    IL      6      5
+</code></pre>
+
+<p>I'm about to drive myself silly trying to solve this. Seems like it should be a simple subscript problem. </p>
+"
+1311620,143377,2009-08-21T12:19:47Z,1310247,24,TRUE,"<p>I never use attach. <code>with</code> and <code>within</code> are your friends.</p>
+
+<p>Example code:</p>
+
+<pre><code>&gt; N &lt;- 3
+&gt; df &lt;- data.frame(x1=rnorm(N),x2=runif(N))
+&gt; df$y &lt;- with(df,{
+   x1+x2
+ })
+&gt; df
+          x1         x2          y
+1 -0.8943125 0.24298534 -0.6513271
+2 -0.9384312 0.01460008 -0.9238312
+3 -0.7159518 0.34618060 -0.3697712
+&gt; 
+&gt; df &lt;- within(df,{
+   x1.sq &lt;- x1^2
+   x2.sq &lt;- x2^2
+   y &lt;- x1.sq+x2.sq
+   x1 &lt;- x2 &lt;- NULL
+ })
+&gt; df
+          y        x2.sq     x1.sq
+1 0.8588367 0.0590418774 0.7997948
+2 0.8808663 0.0002131623 0.8806532
+3 0.6324280 0.1198410071 0.5125870
+</code></pre>
+
+<p>Edit: hadley mentions transform in the comments. here is some code:</p>
+
+<pre><code> &gt; transform(df, xtot=x1.sq+x2.sq, y=NULL)
+       x2.sq       x1.sq       xtot
+1 0.41557079 0.021393571 0.43696436
+2 0.57716487 0.266325959 0.84349083
+3 0.04935442 0.004226069 0.05358049
+</code></pre>
+",76235,2009-08-21T05:45:34Z,25,Do you use attach() or call variables by name or slicing?,"<p>Many intro R books and guides start off with the practice of attaching a <code>data.frame</code> so that you can call the variables by name. I have always found it favorable to call variables with <code>$</code> notation or square bracket slicing <code>[,2]</code>. That way I can use multiple <code>data.frame</code>s without confusing them and/or use iteration to successively call columns of interest. I noticed Google recently posted <a href=""http://google-styleguide.googlecode.com/svn/trunk/google-r-style.html"" rel=""nofollow noreferrer"">coding guidelines for R</a> which included the line</p>
+
+<blockquote>
+  <p>1) attach: avoid using it </p>
+</blockquote>
+
+<p>How do people feel about this practice?</p>
+"
+1312929,16632,2009-08-21T16:24:01Z,1312865,5,TRUE,"<p>Have a look at the <code>layout</code> parameter. </p>
+
+<p>Maybe you want something like:</p>
+
+<pre><code>xyplot(Predicted_value + Actual_value ~ x_value | State_CD, data=dd, layout = c(4,5))
+</code></pre>
+",37751,2009-08-21T16:06:26Z,5,Controlling the number of panels in a lattice plot with R,"<p>How do I limit the number of panels shown on a single page using lattice? I am graphing the results of a regression for multiple states and putting 50 of these on a single page makes them unreadable. I would like to limit the output to 4 wide and as many tall as needed. </p>
+
+<p>Here's my lattice code:</p>
+
+<pre><code>xyplot(Predicted_value + Actual_value ~ x_value | State_CD, data=dd)
+</code></pre>
+
+<p>There are 50 different values for State_CD</p>
+"
+1313568,2002705,2009-08-21T18:29:57Z,1311920,21,TRUE,"<p>You can achieve this using the built-in <code>embed()</code> function, where its second 'dimension' argument is equivalent to what you've called 'lag':</p>
+
+<pre><code>x &lt;- c(NA,NA,1,2,3,4)
+embed(x,3)
+
+## returns
+     [,1] [,2] [,3]
+[1,]    1   NA   NA
+[2,]    2    1   NA
+[3,]    3    2    1
+[4,]    4    3    2
+</code></pre>
+
+<p><code>embed()</code> was discussed in a <a href=""https://stackoverflow.com/questions/1169376/cumulative-sums-moving-averages-and-sql-group-by-equivalents-in-r/1172367#1172367"">previous answer</a> by Joshua Reich.  (Note that I prepended x with NAs to replicate your desired output). </p>
+
+<p>It's not particularly well-named but it is quite useful and powerful for operations involving sliding windows, such as rolling sums and moving averages.</p>
+",160794,2009-08-21T13:23:57Z,11,Lagging Variables in R,"<p>What is the most efficient way to make a matrix of lagged variables in R for an arbitrary variable (i.e. not a regular time series)</p>
+
+<p>For example:</p>
+
+<p><strong><em>Input</em></strong>:</p>
+
+<pre><code>x &lt;- c(1,2,3,4) 
+</code></pre>
+
+<p><strong><em>2 lags, output</em></strong>:</p>
+
+<pre><code>[1,NA, NA]
+[2, 1, NA]
+[3, 2,  1]
+[4, 3,  2]
+</code></pre>
+"
+1314342,158065,2009-08-21T21:36:39Z,1313954,18,TRUE,"<p>Just following up on what Ian suggested: for ggplot2 you really want all the y-axis stuff in one column with another column as a factor indicating how you want to decorate it.  It is easy to do this with <code>melt</code>.  To wit:</p>
+
+<pre><code>qplot(x_value, value, 
+      data = melt(dd, measure.vars=c(""Predicted_value"", ""Actual_value"")), 
+      colour=variable) + facet_wrap(~State_CD)
+</code></pre>
+
+<p>Here's what it looks like for me:
+<a href=""http://www.cs.princeton.edu/~jcone/example.png"">alt text http://www.cs.princeton.edu/~jcone/example.png</a></p>
+
+<p>To get an idea of what <code>melt</code> is actually doing, here's the head:</p>
+
+<pre><code>&gt; head(melt(dd, measure.vars=c(""Predicted_value"", ""Actual_value"")))
+     x_value State_CD        variable      value
+1  1.2898779        A Predicted_value  1.0913712
+2  0.1077710        A Predicted_value -2.2337188
+3 -0.9430190        A Predicted_value  1.1409515
+4  0.3698614        A Predicted_value -1.8260033
+5 -0.3949606        A Predicted_value -0.3102753
+6 -0.1275037        A Predicted_value -1.2945864
+</code></pre>
+
+<p>You see, it ""melts"" Predicted_value and Actual_value into one column called <code>value</code> and adds another column called <code>variable</code> letting you know what column it originally came from.</p>
+",37751,2009-08-21T19:58:39Z,18,plotting two vectors of data on a GGPLOT2 scatter plot using R,"<p>I've been experimenting with both <code>ggplot2</code> and <code>lattice</code> to graph panels of data. I'm having a little trouble wrapping my mind around the <code>ggplot2</code> model. In particular, how do I plot a scatter plot with two sets of data on each panel:</p>
+
+<p>in <code>lattice</code> I could do this:</p>
+
+<pre><code>xyplot(Predicted_value + Actual_value ~ x_value | State_CD, data=dd)
+</code></pre>
+
+<p>and that would give me a panel for each State_CD with each column</p>
+
+<p>I can do one column with <code>ggplot2</code>: </p>
+
+<pre><code>pg &lt;- ggplot(dd, aes(x_value, Predicted_value)) + geom_point(shape = 2) 
+      + facet_wrap(~ State_CD) + opts(aspect.ratio = 1)
+print(pg)
+</code></pre>
+
+<p>What I can't grok is how to add Actual_value to the ggplot above. </p>
+
+<p><strong>EDIT</strong> Hadley pointed out that this really would be easier with a reproducible example. Here's code that seems to work. Is there a better or more concise way to do this with ggplot? Why is the syntax for adding another set of points to ggplot so different from adding the first set of data?</p>
+
+<pre><code>library(lattice)
+library(ggplot2)
+
+#make some example data
+dd&lt;-data.frame(matrix(rnorm(108),36,3),c(rep(""A"",24),rep(""B"",24),rep(""C"",24)))
+colnames(dd) &lt;- c(""Predicted_value"", ""Actual_value"", ""x_value"", ""State_CD"")
+
+#plot with lattice
+xyplot(Predicted_value + Actual_value ~ x_value | State_CD, data=dd)
+
+#plot with ggplot
+pg &lt;- ggplot(dd, aes(x_value, Predicted_value)) + geom_point(shape = 2) + facet_wrap(~ State_CD) + opts(aspect.ratio = 1)
+print(pg)
+
+pg + geom_point(data=dd,aes(x_value, Actual_value,group=State_CD), colour=""green"")
+</code></pre>
+
+<p>The lattice output looks like this:
+<a href=""http://www.cerebralmastication.com/wp-content/uploads/2009/08/lattice.png"" rel=""nofollow noreferrer"">alt text http://www.cerebralmastication.com/wp-content/uploads/2009/08/lattice.png</a></p>
+
+<p>and ggplot looks like this:
+<a href=""http://www.cerebralmastication.com/wp-content/uploads/2009/08/ggplot.png"" rel=""nofollow noreferrer"">alt text http://www.cerebralmastication.com/wp-content/uploads/2009/08/ggplot.png</a></p>
+"
+1321476,161921,2009-08-24T10:01:50Z,1274171,12,TRUE,"<p>Yes,  Thierry's answer is definitely true I can say as co-author of the 'Matrix' package...</p>
+
+<p>To your other question: Why is accessing ""M"" slower than ""Y""? 
+The main answer is that ""M"" is much much sparser than ""Y"" hence much smaller and -- depending on the sizes envolved and the RAM of your platform -- the access time is faster for much smaller objects, notably for indexing into them.</p>
+",84458,2009-08-13T19:46:34Z,11,Creating (and Accessing) a Sparse Matrix with NA default entries,"<p>After learning about the <a href=""https://stackoverflow.com/questions/1167448/most-mature-sparse-matrix-package-for-r"">options for working with sparse matrices in R</a>, I want to use the <a href=""http://cran.r-project.org/web/packages/Matrix/index.html"" rel=""nofollow noreferrer"">Matrix</a> package to create a sparse matrix from the following data frame and have all other elements be <code>NA</code>.</p>
+
+<pre><code>     s    r d
+1 1089 3772 1
+2 1109  190 1
+3 1109 2460 1
+4 1109 3071 2
+5 1109 3618 1
+6 1109   38 7
+</code></pre>
+
+<p>I know I can create a sparse matrix with the following, accessing elements as usual:</p>
+
+<pre><code>&gt; library(Matrix)
+&gt; Y &lt;- sparseMatrix(s,r,x=d)
+&gt; Y[1089,3772]
+[1] 1
+&gt; Y[1,1]
+[1] 0
+</code></pre>
+
+<p>but if I want to have the default value to be NA, I tried the following:</p>
+
+<pre><code>  M &lt;- Matrix(NA,max(s),max(r),sparse=TRUE)
+  for (i in 1:nrow(X))
+    M[s[i],r[i]] &lt;- d[i]
+</code></pre>
+
+<p>and got this error</p>
+
+<pre><code>Error in checkSlotAssignment(object, name, value) : 
+  assignment of an object of class ""numeric"" is not valid for slot ""x"" in an object of class ""lgCMatrix""; is(value, ""logical"") is not TRUE
+</code></pre>
+
+<p>Not only that, I find that one takes much longer to access to elements.</p>
+
+<pre><code>&gt; system.time(Y[3,3])
+   user  system elapsed 
+  0.000   0.000   0.003 
+&gt; system.time(M[3,3])
+   user  system elapsed 
+  0.660   0.032   0.995 
+</code></pre>
+
+<p>How should I be creating this matrix?  Why is one matrix so much slower to work with?</p>
+
+<p>Here's the code snippet for the above data:</p>
+
+<pre><code>X &lt;- structure(list(s = c(1089, 1109, 1109, 1109, 1109, 1109), r = c(3772, 
+190, 2460, 3071, 3618, 38), d = c(1, 1, 1, 2, 1, 7)), .Names = c(""s"", 
+""r"", ""d""), row.names = c(NA, 6L), class = ""data.frame"")
+</code></pre>
+"
+1321491,161921,2009-08-24T10:05:07Z,1319698,23,TRUE,"<p>@ Dirk:  For once, you're not quite right. It's not the parser.
+One <em>can</em> write methods in R for ""+"" -- help(""+"") goes to ""Arithmetic operators"" and mentions
+that these are generic and you can write methods for them ... and of course many package writers do, e.g., we do for the 'Matrix' package, and I also do for the ""Rmpfr"" package, e.g.
+But Dirk is also right (of course!) that you cannot do it in R currently,
+by just defining a method for ""+.character"".</p>
+
+<p>About three years ago, I had started a thread on R-devel (the R mailing list on R development; very much recommended if you are interested in these topics; you can also access through Gmane if you don't want to subscribe) :<a href=""https://www.stat.math.ethz.ch/pipermail/r-devel/2006-August/038991.html"" rel=""noreferrer"">r-devel archived msg</a></p>
+
+<p>It came to an interesting discussion with quite a few pros and cons,
+notably John Chambers (""the father of S and hence R"") pretty strongly opposing to use ""+"" for an operation that is <strong>not</strong> commutative, 
+and also <a href=""https://www.stat.math.ethz.ch/pipermail/r-devel/2006-August/039012.html"" rel=""noreferrer"">r-devel archived msg2</a> (by another R-core member), supporting the view that we (R Core) should not adopt / support the idea; and if people **really* wanted it, they could define
+%+%  for that.</p>
+",143377,2009-08-23T22:12:28Z,22,"Why doesn't ""+"" operate on characters in R?","<p>Call me lazy, but I just hate typing things like <code>paste(""a"",""b"",sep='')</code> all the time. </p>
+
+<p>I know that ""(t)his is R. There is no if, only how."" (<code>library(fortunes);(fortune(109)</code>). So, my follow up question is: Is it possible to easily change this behavior? </p>
+"
+1326095,143319,2009-08-25T04:44:01Z,1325974,7,TRUE,"<p>I can see a couple of potential problems here - rcom has a weird installation.</p>
+
+<ol>
+<li><p>Did you load the package - that is, run <code>library(rcom)</code> after installing it?  I know, I know - but I forget that step all the time, and it would definitely give you the ""could not find function"" error.</p></li>
+<li><p>Did you run the <code>installstatconnDCOM()</code> command?  I almost didn't notice it telling me to do this.</p></li>
+</ol>
+",125380,2009-08-25T04:02:08Z,5,Using COM in R language,"<p>I am trying to get the rcom package for R working.  It seems to have installed ok:</p>
+
+<pre>
+> install.packages(""rcom"");
+--- Please select a CRAN mirror for use in this session ---
+trying URL 'http://mira.sunsite.utk.edu/CRAN/bin/windows/contrib/2.9/rcom_2.2-1.zip'
+Content type 'application/zip' length 204632 bytes (199 Kb)
+opened URL
+downloaded 199 Kb
+
+package 'rcom' successfully unpacked and MD5 sums checked
+
+The downloaded packages are in
+        C:\Users\solomon\AppData\Local\Temp\Rtmpzb5oi4\downloaded_packages
+updating HTML package descriptions
+</pre>
+
+<p>Then I try to run something:</p>
+
+<pre>
+>comCreateObject(""Excel.Application"");
+Error: could not find function ""comCreateObject""
+</pre>
+
+<p>What am I missing, the <a href=""http://cran.r-project.org/web/packages/rcom/rcom.pdf"" rel=""noreferrer"">manual</a> tells me that comCreateObject is the appropriate command.  However, the manual's version is somewhat old.  Anyone else have any insights?</p>
+"
+1329946,84458,2009-08-25T18:04:01Z,1329940,105,TRUE,"<p>One option is to use <code>do.call()</code>: </p>
+
+<pre><code> &gt; do.call(rbind, a)
+      [,1] [,2] [,3] [,4] [,5] [,6]
+ [1,]    1    1    2    3    4    5
+ [2,]    2    1    2    3    4    5
+ [3,]    3    1    2    3    4    5
+ [4,]    4    1    2    3    4    5
+ [5,]    5    1    2    3    4    5
+ [6,]    6    1    2    3    4    5
+ [7,]    7    1    2    3    4    5
+ [8,]    8    1    2    3    4    5
+ [9,]    9    1    2    3    4    5
+[10,]   10    1    2    3    4    5
+</code></pre>
+",84458,2009-08-25T18:02:36Z,84,How do I make a matrix from a list of vectors in R?,"<p>Goal: from a list of vectors of equal length, create a matrix where each vector becomes a row.</p>
+
+<p>Example:</p>
+
+<pre><code>&gt; a &lt;- list()
+&gt; for (i in 1:10) a[[i]] &lt;- c(i,1:5)
+&gt; a
+[[1]]
+[1] 1 1 2 3 4 5
+
+[[2]]
+[1] 2 1 2 3 4 5
+
+[[3]]
+[1] 3 1 2 3 4 5
+
+[[4]]
+[1] 4 1 2 3 4 5
+
+[[5]]
+[1] 5 1 2 3 4 5
+
+[[6]]
+[1] 6 1 2 3 4 5
+
+[[7]]
+[1] 7 1 2 3 4 5
+
+[[8]]
+[1] 8 1 2 3 4 5
+
+[[9]]
+[1] 9 1 2 3 4 5
+
+[[10]]
+[1] 10  1  2  3  4  5
+</code></pre>
+
+<p>I want:</p>
+
+<pre><code>      [,1] [,2] [,3] [,4] [,5] [,6]
+ [1,]    1    1    2    3    4    5
+ [2,]    2    1    2    3    4    5
+ [3,]    3    1    2    3    4    5
+ [4,]    4    1    2    3    4    5
+ [5,]    5    1    2    3    4    5
+ [6,]    6    1    2    3    4    5
+ [7,]    7    1    2    3    4    5
+ [8,]    8    1    2    3    4    5
+ [9,]    9    1    2    3    4    5
+[10,]   10    1    2    3    4    5 
+</code></pre>
+"
+1331243,144157,2009-08-25T21:54:26Z,1331203,1,TRUE,"<p>Try this:</p>
+
+<pre><code>A$id.new &lt;- match(A$id,unique(A$id))
+</code></pre>
+
+<p><strong>Additional comment:</strong>
+To get the table of values:</p>
+
+<pre><code>rbind(unique(A$id.new),unique(A$id))
+</code></pre>
+",84458,2009-08-25T21:44:41Z,0,Renaming large IDs,"<p>Suppose I have a data.frame with N rows.  The <code>id</code> column has 10 unique values; all those values are integers greater than 1e7.  I would like to rename them to be numbered 1 through 10 and save these new IDs as a column in my data.frame.</p>
+
+<p>Additionally, I would like to easily determine 1) <code>id</code> given <code>id.new</code> and 2) <code>id.new</code> given <code>id</code>.</p>
+
+<p>For example: </p>
+
+<pre><code>&gt; set.seed(123)
+&gt; ids &lt;- sample(1:1e7,10)
+&gt; A &lt;- data.frame(id=sample(ids,100,replace=TRUE),
+                  x=rnorm(100))
+&gt; head(A)
+       id          x
+1 4566144  1.5164706
+2 9404670 -1.5487528
+3 5281052  0.5846137
+4  455565  0.1238542
+5 7883051  0.2159416
+6 5514346  0.3796395
+</code></pre>
+"
+1331400,158065,2009-08-25T22:36:04Z,1330989,581,TRUE,"<p>Change the last line to </p>
+
+<pre><code>q + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+</code></pre>
+
+<p>By default, the axes are aligned at the center of the text, even when rotated.  When you rotate +/- 90 degrees, you usually want it to be aligned at the edge instead:</p>
+
+<p><img src=""https://learnr.files.wordpress.com/2009/03/immigration_b4.png?w=416&amp;h=415"" alt=""alt text""></p>
+
+<p>The image above is from <a href=""http://learnr.wordpress.com/2009/03/17/ggplot2-barplots/"" rel=""noreferrer"">this blog post</a>.</p>
+",84458,2009-08-25T21:05:24Z,383,Rotating and spacing axis labels in ggplot2,"<p>I have a plot where the x-axis is a factor whose labels are long.  While probably not an ideal visualization, for now I'd like to simply rotate these labels to be vertical.  I've figured this part out with the code below, but as you can see, the labels aren't totally visible.</p>
+
+<pre><code>data(diamonds)
+diamonds$cut &lt;- paste(""Super Dee-Duper"",as.character(diamonds$cut))
+q &lt;- qplot(cut,carat,data=diamonds,geom=""boxplot"")
+q + opts(axis.text.x=theme_text(angle=-90))
+</code></pre>
+
+<p><a href=""https://i.stack.imgur.com/pcJr3.png"" rel=""noreferrer""><img src=""https://i.stack.imgur.com/pcJr3.png"" alt=""enter image description here""></a></p>
+"
+1335871,31000,2009-08-26T16:13:52Z,1335830,58,TRUE,"<p>The documentation for ifelse states:</p>
+
+<blockquote>
+  <p><code>ifelse</code> returns a value with the same
+  shape as <code>test</code> which is filled with
+  elements selected from either <code>yes</code> or
+  <code>no</code> depending on whether the element
+  of <code>test</code> is <code>TRUE</code> or <code>FALSE</code>.</p>
+</blockquote>
+
+<p>Since you are passing test values of length 1, you are getting results of length 1. If you pass longer test vectors, you will get longer results:</p>
+
+<pre><code>&gt; ifelse(c(TRUE, FALSE), c(1, 2), c(3, 4))
+[1] 1 4
+</code></pre>
+",84458,2009-08-26T16:06:33Z,68,Why can't R's ifelse statements return vectors?,"<p>I've found R's ifelse statements to be pretty handy from time to time.  For example:</p>
+
+<pre><code>ifelse(TRUE,1,2)
+# [1] 1
+ifelse(FALSE,1,2)
+# [1] 2
+</code></pre>
+
+<p>But I'm somewhat confused by the following behavior.</p>
+
+<pre><code>ifelse(TRUE,c(1,2),c(3,4))
+# [1] 1
+ifelse(FALSE,c(1,2),c(3,4))
+# [1] 3
+</code></pre>
+
+<p>Is this a design choice that's above my paygrade?</p>
+"
+1351962,143305,2009-08-29T17:41:33Z,1351937,5,TRUE,"<p>A few comments to your questions:</p>
+
+<ol>
+<li>Look at <code>help(Startup)</code>. You are probably running <code>$R_HOME/etc/Rprofile</code> [ which on Ubuntu and Debian is also available as <code>/etc/R/Rprofile</code> as we created softlinks to connect them ] and you have both an empty <code>$R_HOME/etc/Rprofile.site</code> as well as <code>~/.Rprofile</code> to play with.</li>
+<li>For starters, do <code>ls -l</code> on the lockfile and see it is there.  If so, and if you have no other R process running, remove. Re-start the package install.</li>
+<li>RODBC needs development headers for an ODBC library and all that -- again, for Debian / Ubuntu you just say <code>sudo apt-get install r-cran-rodbc</code>. If you run another distro, see if they have RODBC prepackaged.</li>
+<li>Regarding <code>~/.Rprofile</code> there are few possible tips and tricks you can learn from <a href=""https://stackoverflow.com/questions/1189759/expert-r-users-whats-in-your-rprofile"">this earlier StackOverflow question</a>.</li>
+</ol>
+",165406,2009-08-29T17:21:13Z,3,R package installation,"<p>I have basically two questions.</p>
+
+<ol>
+<li><p>How do I locate the default <code>Rprofile</code> which is running? I have not setup a <code>Rprofile</code> yet, so I am not sure where it is running from.</p></li>
+<li><p>I am trying to install a few packages using the command (after doing a SUDO in the main terminal).</p></li>
+</ol>
+
+
+
+<pre><code>install.packages(""RODBC"",""/home/rama/R/i486-pc-linux-gnu-library/2.9"")
+</code></pre>
+
+<p>and I get back an error which says:</p>
+
+<blockquote>
+  <p>ERROR: failed to lock directory ‘/home/rama/R/i486-pc-linux-gnu-library/2.9’ for modifying Try removing ‘/home/rama/R/i486-pc-linux-gnu-library/2.9/00LOCK’</p>
+  
+  <p>The downloaded packages are in ‘/tmp/RtmpkzDMVU/downloaded_packages’ Warning message: In install.packages(""RODBC"", ""/home/rama/R/i486-pc-linux-gnu-library/2.9"") : installation of package 'RODBC' had non-zero exit status</p>
+</blockquote>
+"
+1353119,158065,2009-08-30T04:51:14Z,1352863,9,TRUE,"<p>You need to <code>print</code> the plot if you want it to display:</p>
+
+<pre><code>print(ggplot(country.df, aes(x = value.v51)) + geom_histogram())
+</code></pre>
+
+<p>By default, ggplot commands return a plot object but the command itself does not actually display the plot; that is done with the <code>print</code> command.  Note that when you run code interactively, results of commands get printed which is why you often don't need the explicit print.  But when wrapping in a <code>foreach</code>, you need to explicitly print since the results of the commands in the body will not be echoed.</p>
+",143319,2009-08-30T02:07:13Z,7,Getting foreach() and ggplot2 to get along,"<p>I have a set of survey data, and I'd like to generate plots of a particular variable, grouped by the respondent's country.  The code I have written to generate the plots so far is:</p>
+
+<pre><code>countries &lt;- isplit(drones, drones$v3)
+foreach(country = countries) %dopar% {
+  png(file = paste(output.exp, ""/Histogram of Job Satisfaction in "", country$key[[1]], "".png"", sep = """"))
+  country.df &lt;- data.frame(country)  #ggplot2 doesn't appreciate the lists nextElem() produces
+  ggplot(country.df, aes(x = value.v51)) + geom_histogram()
+  dev.off()
+}
+</code></pre>
+
+<p>The truly bizarre thing?  I can run the isplit(), set <code>country &lt;- nextElem(countries)</code>, and then run through the code without sending the foreach line - and get a lovely plot.  If I send the foreach, I get some blank .png files.</p>
+
+<p>Thanks in advance for your help.</p>
+
+<p>I can definitely do this with standard R loops, but I'd really like to get a better grasp on <code>foreach</code>.</p>
+"
