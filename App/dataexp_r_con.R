@@ -1,10 +1,10 @@
 library(tidyverse)
 
-answers_pre <- read_csv('../../Prelim_Results/QandA.csv', n_max = 100,
+answers_pre <- read_csv('../Prelim_Results/QandA.csv', n_max = 100,
                         col_types = c('ddTddlcdTdcc'))
-ans_ts <- read_csv('../../Prelim_Results/Ans_Sum_TS.csv',
+ans_ts <- read_csv('../Prelim_Results/Ans_Sum_TS.csv',
                    col_types = c('Diddi'))
-que_ts <- read_csv('../../Prelim_Results/Que_Sum_TS.csv',
+que_ts <- read_csv('../Prelim_Results/Que_Sum_TS.csv',
                    col_types = c('Diddi'))
 que_class_lda <- read_csv('../../Prelim_Results/lda_class_que.csv',
                           col_types = c('ncfffcc'))
