@@ -1,0 +1,143 @@
+---
+title: "Latent Dirichlet Allocation"
+author: "Joseph Oliveira"
+date: "7/24/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(NLP)
+library(scales)
+library(tidytext)
+library(tm)
+library(httr)
+library(rvest)
+library(topicmodels)
+theme_set(theme_bw())
+```
+
+Preparing for Latent Dirichlet Allocation
+
+```{r}
+ans <- ( accepted <- answers %>% 
+           filter(IsAcceptedAnswer == 'TRUE')) %>%
+  pull(Body)
+
+length(ans)
+```
+
+This has to be cleaned up a bit.  
+  - Paragraph breaks are marked with `<p>`, `</p>`, and `\n`
+    - `<p>` seems to be a leading formatter
+    - Mid-body breaks: `<p>\n</p>`
+      - The number of line breaks, `\n` is arbitrary. 
+  - Need to clean up links as well. They are not going to be informative here unless I build a tool that goes to the link to pull what ever text is there. 
+    - Might try this with BeautifulSoup in python if I have some time.
+  - General HTML format modifiers will have to be dealt with.
+    - Might be helpful to store all types of HTML format modifiers to a vector for easy reference.
+  - In general, will need to identify line breaks: `\n`
+  - In code, the assignment operator is `&lt;-`, since &lt; is the `<` sign in HTML. 
+    - Can do a check to ensure that items between `<code> </code>`
+
+Pulling down a list of HTML tags
+
+```{r}
+session <- html_session('https://www.w3schools.com/TAGs/')
+html_table <- html_table(session)
+
+html_tags <- tibble(tags = unlist(html_table))
+
+html_tags <- html_tags %>%
+  filter(str_detect(tags, pattern = '^<')) %>%
+  rename(open_tags = tags) %>%
+  mutate(close_tags = paste0(str_sub(open_tags, end = 1L), '/', str_sub(open_tags, start = 2L)))
+
+html_tag_vctr <- c(html_tags$open_tags, html_tags$close_tags, use.names = F)
+```
+
+Cleaning up text data   
+
+```{r}
+html_regex <- paste0('\\n|<img src=.+>|<a href=.+>|\\(|\\)|\\{|\\}|,|',
+                     paste0(html_tag_vctr, collapse = '|'), collapse = '')
+
+ans_clean <- str_replace_all(ans, pattern = html_regex, ' ') %>% 
+  str_trim()
+head(ans_clean, 2)
+```
+
+Transforming into tidy text format
+
+```{r}
+ans_clean_tdy <- tibble(questionId = accepted$ParentId, 
+                        body = ans_clean) %>%
+  unnest_tokens(word, body)
+
+head(ans_clean_tdy, 10)
+```
+
+ Now the data is considered to be in a state referred to as *Tidy Text*. In this format, each word from each question is represented by a row. I have a total of `r number(nrow(ans_clean_tdy), big.mark = ',')` words from `r number(n_distinct(ans_clean_tdy$questionId), big.mark = ',')` questions. 
+ 
+ Average number of words per question:  
+```{r}
+nrow(ans_clean_tdy) / n_distinct(ans_clean_tdy$questionId)
+```
+ 
+This is pretty low for a Latent Dirichlet Allocation analysis. The resulting Document Term matrix will be pretty sparse, but I'll attempt the cluster algorithm anyways. There is one more step to get the *Tidy Text* in its tidiest form.
+
+```{r}
+ans_clean_tdy <- ans_clean_tdy %>%
+  count(word, questionId)
+```
+
+Time to pull stop words out, but I'll need to be careful about which stop words are filtered out since the context here is coding related. 
+
+This will be a manual process. I want to pick out words that related to conditional situations, i.e. `if` *condition* `then` *action*.
+
+```{r}
+ans_sw <- ans_clean_tdy %>%
+  filter(word %in% stopwords()) %>%
+  arrange(desc(n)) %>%
+  distinct(word) %>%
+  pull(word)
+
+ans_sw
+
+# Of the stopwords identified in the corpus, I'll be keeping the following:
+keep_sw <- c('from', 'if', 'all', 'by', 'i', 'in', 'and', 'not', 
+             'for', 'when', 'with', 'between', 'which', 'or', 
+             'any', 'where', 'while', 'then')
+
+actual_sw <- stopwords()[-which(stopwords() %in% keep_sw)]
+
+ans_clean_tdy %>%
+  filter(!word %in% actual_sw) %>%
+  arrange(desc(n)) %>%
+  distinct(word, .keep_all = T)
+```
+
+Those are just common stopword. I will need to add to that 'coding' stopwords. These are terms common accross any situation any coding situation and thus are discriminating. 
+
+```{r}
+actual_sw2 <- c(actual_sw, 
+               'x', # too common of a variable
+               'lt'# html code translated &lt; into '<', which is used as right assign. I do lose comparison ops.
+               )
+
+ans_clean_tdy <- ans_clean_tdy %>%
+  filter(!word %in% actual_sw2) %>%
+  filter(str_detect(word, pattern = '^[:digit:]+', negate = T)) %>%
+  filter(str_detect(word, pattern = '_+', negate = T))
+```
+
+Transforming tidy data into a document term matrix for LDA.
+
+```{r}
+(ans_dtm <- ans_clean_tdy %>%
+  cast_dtm(questionId, word, n))
+```
+
+Now the tidy data is in a sparse matrix form referred to as Document Term Matrix or DTM for short. Each `[i,j]` cell represents the number of occurances that the `ith` word has in the `jth` document (or questionId). Our DTM is fairly sparse, clockin' in at 100% sparsity.  
